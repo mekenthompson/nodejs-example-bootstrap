@@ -1,0 +1,52 @@
+steps:
+  - block: ":gear:  Configure your Buildkite org"
+    prompt: "Fill in these details, then click *Unblock* to set up hosted agents, Test Engine, and a Package Registry."
+    fields:
+      - text: "org_slug"
+        label: "Buildkite org slug"
+        required: true
+      - text: "registry"
+        label: "Registry name"
+        default: "acme-internal"
+      - select: "shape"
+        label: "Hosted‑agent instance shape"
+        key: "shape"
+        options:
+          - label: "2 vCPU/4 GB Linux (LINUX_AMD64_2X4)"
+            value: "LINUX_AMD64_2X4"
+          - label: "4 vCPU/8 GB Linux (LINUX_AMD64_4X8)"
+            value: "LINUX_AMD64_4X8"
+          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
+            value: "MAC_M2PRO_32GB"
+      - password: "bk_token"
+        label: "Buildkite *org* API token (write scope)"
+        required: true
+        secure: true
+
+  - label: ":terraform: plan"
+    key: plan
+    commands:
+      - cd terraform
+      - export TF_VAR_org_slug="$ORG_SLUG"
+      - export TF_VAR_registry_name="$REGISTRY"
+      - export TF_VAR_queue_shape="$SHAPE"
+      - export TF_VAR_buildkite_api_token="$BK_TOKEN"
+      - terraform init -input=false
+      - terraform plan -out=tf.plan
+    agents:
+      queue: "default"
+
+  - wait
+
+  - block: ":white_check_mark:  Apply the plan?"
+
+  - label: ":rocket: terraform apply"
+    commands:
+      - cd terraform
+      - export TF_VAR_org_slug="$ORG_SLUG"
+      - export TF_VAR_registry_name="$REGISTRY"
+      - export TF_VAR_queue_shape="$SHAPE"
+      - export TF_VAR_buildkite_api_token="$BK_TOKEN"
+      - terraform apply -auto-approve tf.plan
+    agents:
+      queue: "default"

@@ -1,0 +1,29 @@
+env:
+  DOCKER_BUILDKIT: "1"
+
+steps:
+  - label: ":docker: Build"
+    commands:
+      - docker build -t node-example:${BUILDKITE_COMMIT} app/
+    agents:
+      queue: "${QUEUE_KEY}"
+
+  - label: ":jest: Test (split)"
+    depends_on: "Build"
+    commands:
+      - cd app
+      - yarn install --frozen-lockfile
+      - yarn test --ci --reporters=jest-junit --runInBand
+    plugins:
+      - buildkite/test-collector#v0.5:
+          token: "${BUILDKITE_ANALYTICS_TOKEN}"
+          upload-junit-xml: "**/junit*.xml"
+    agents:
+      queue: "${QUEUE_KEY}"
+
+  - label: ":package: Push"
+    depends_on: "Test (split)"
+    commands:
+      - buildkite-agent oidc exec --         docker push buildkite://${REGISTRY_SLUG}/node-example:${BUILDKITE_COMMIT}
+    agents:
+      queue: "${QUEUE_KEY}"
