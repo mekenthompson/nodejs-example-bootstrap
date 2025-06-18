@@ -24,6 +24,7 @@ steps:
       - select: "Hosted-agent instance shape"
         key: "shape"
         required: true
+        default: "LINUX_AMD64_2X4"
         options:
           - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
             value: "LINUX_AMD64_2X4"
@@ -47,7 +48,6 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint: ""        # clear the default ["terraform"]
           workdir: /workdir
     commands:
       - |
@@ -90,7 +90,6 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint: ""
           workdir: /workdir
     commands:
       - |
