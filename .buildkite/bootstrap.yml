@@ -26,15 +26,22 @@ steps:
     plugins:
       docker#v3.8.0:
         image: hashicorp/terraform:1.5.7
-        entrypoint: ["/bin/sh", "-c"]
-    command: |
-      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      cd terraform
-      terraform init -input=false
-      terraform plan -out=tf.plan
+        # disable the container’s default ENTRYPOINT ("terraform")
+        entrypoint: [""]
+    # by using an array here, Docker runs:
+    #   --entrypoint "" hashicorp/terraform:1.5.7 /bin/sh -e -c '…'
+    command:
+      - /bin/sh
+      - -e
+      - -c
+      - |
+        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+        cd terraform
+        terraform init -input=false
+        terraform plan -out=tf.plan
 
   - wait
 
@@ -44,11 +51,15 @@ steps:
     plugins:
       docker#v3.8.0:
         image: hashicorp/terraform:1.5.7
-        entrypoint: ["/bin/sh", "-c"]
-    command: |
-      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      cd terraform
-      terraform apply -auto-approve tf.plan
+        entrypoint: [""]
+    command:
+      - /bin/sh
+      - -e
+      - -c
+      - |
+        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+        cd terraform
+        terraform apply -auto-approve tf.plan
