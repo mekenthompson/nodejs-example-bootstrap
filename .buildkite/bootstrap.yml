@@ -2,7 +2,8 @@ steps:
   # 1. Interactive form – capture your org settings
   - block: ":gear: Configure your Buildkite org"
     prompt: |
-      Fill in these details, then click **Unblock** to set up hosted agents, a Test Engine queue, and a Package Registry.
+      Fill in these details, then click **Unblock** to set up hosted agents,
+      a Test Engine queue, and a Package Registry.
     fields:
       - text: "Org slug"
         key: org_slug
@@ -20,7 +21,7 @@ steps:
             value: "LINUX_AMD64_4X8"
           - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
             value: "MAC_M2PRO_32GB"
-      - password: "Buildkite org API token (write scope)"
+      - text: "Buildkite org API token (write scope)"
         key: bk_token
         required: true
 
@@ -29,18 +30,21 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint: ["/bin/sh","-e","-c"]
-          workdir: "/workdir/terraform"
-    command: |
-      # Pull in the form inputs as TF vars
-      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+          entrypoint: [""]               # clear Terraform’s ENTRYPOINT
+          workdir: "terraform"           # run in repo-root/terraform
+          command:
+            - /bin/sh
+            - -e
+            - -c
+            - |
+              # Export the form inputs as Terraform vars
+              export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+              export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+              export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+              export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
 
-      # Run Terraform
-      terraform init -input=false
-      terraform plan -out=tf.plan
+              terraform init -input=false
+              terraform plan -out=tf.plan
     artifact_paths:
       - "terraform/tf.plan"
 
@@ -54,12 +58,16 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint: ["/bin/sh","-e","-c"]
-          workdir: "/workdir/terraform"
-    command: |
-      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+          entrypoint: [""]
+          workdir: "terraform"
+          command:
+            - /bin/sh
+            - -e
+            - -c
+            - |
+              export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+              export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+              export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+              export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
 
-      terraform apply -auto-approve tf.plan
+              terraform apply -auto-approve tf.plan
