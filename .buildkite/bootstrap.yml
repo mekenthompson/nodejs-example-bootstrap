@@ -12,11 +12,9 @@ steps:
       *Fill in the details below and click **Unblock** to start provisioning.*
     fields:
       - text: "org_slug"
-        label: "Buildkite organisation slug"
         required: true
 
       - text: "registry"
-        label: "Package Registry name"
         default: "acme-internal"
         required: true
 
@@ -31,7 +29,6 @@ steps:
             value: "MAC_M2PRO_32GB"
 
       - text: "bk_token"
-        label: "Buildkite org-level API token (write scope)"
         required: true
         hint: "Create one at https://buildkite.com/user/api-access-tokens"
 
