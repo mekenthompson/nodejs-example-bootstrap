@@ -2,25 +2,25 @@ steps:
   - block: ":gear: Configure your Buildkite org"
     prompt: "Fill in these details, then click *Unblock* to set up hosted agents, Test Engine, and a Package Registry."
     fields:
-      - text: "Buildkite org slug"
-        key: "org_slug"
+      - text: "org slug"
+        key: org_slug
         required: true
-      - text: "Registry name"
-        key: "registry"
-        default: "acme-internal"
-      - select: "Hosted-agent instance shape"
-        key: "shape"
+      - text: "registry name"
+        key: registry
+        default: acme-internal
+      - select: "hosted agent shape"
+        key: shape
         options:
           - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
-            value: "LINUX_AMD64_2X4"
+            value: LINUX_AMD64_2X4
           - label: "4 vCPU / 8 GB Linux (LINUX_AMD64_4X8)"
-            value: "LINUX_AMD64_4X8"
-          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
-            value: "MAC_M2PRO_32GB"
-      - text: "Buildkite *org* API token (write scope)"
-        key: "bk_token"
+            value: LINUX_AMD64_4X8
+          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
+            value: MAC_M2PRO_32GB
+      - text: "buildkite org API token"
+        key: bk_token
         required: true
-        secure: true
+        # WARNING: This will echo the token in logs; Buildkite doesn't support hidden inputs 
 
   - label: ":terraform: plan"
     key: plan
