@@ -12,13 +12,16 @@ steps:
       *Fill in the details below and click **Unblock** to start provisioning.*
     fields:
       - text: "org_slug"
+        key: "org_slug"
         required: true
 
       - text: "registry"
+        key: "registry"
         default: "acme-internal"
         required: true
 
       - select: "shape"
+        key: "shape"
         label: "Hosted-agent instance shape"
         options:
           - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
@@ -29,6 +32,7 @@ steps:
             value: "MAC_M2PRO_32GB"
 
       - text: "bk_token"
+        key: "bk_token"
         required: true
         hint: "Create one at https://buildkite.com/user/api-access-tokens"
 
