@@ -1,63 +1,66 @@
 steps:
-  # ──────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
   # 1. Interactive form
-  # ──────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
   - block: "Configure your Buildkite org"
-    prompt: |
-      1. Creates a hosted‑agent queue, Package Registry and sample pipeline
-      2. Runs Terraform **plan** → approval → **apply**
-      3. Finishes with a green Node.js build on your new queue
-
-      *Fill in the details and click **Unblock** to continue.*
     key: "config"
+    prompt: |
+      1. We’ll create a hosted-agent queue, a Package Registry & a sample pipeline  
+      2. Terraform will do **plan** → you approve → **apply**  
+      3. Ends with a green Node.js build on your new queue
+
+      *Fill in the details below and click **Unblock** to start provisioning.*
     fields:
-      - text: "Buildkite organisation slug"
-        key: "org_slug"
+      - text: "org_slug"
+        label: "Buildkite organisation slug"
         required: true
 
-      - text: "Package Registry name"
-        key: "registry"
+      - text: "registry"
+        label: "Package Registry name"
         default: "acme-internal"
         required: true
 
-      - select: "Hosted‑agent instance shape"
-        key: "shape"
+      - select: "shape"
+        label: "Hosted-agent instance shape"
         options:
-          - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
+          - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
             value: "LINUX_AMD64_2X4"
-          - label: "4 vCPU / 8 GB Linux (LINUX_AMD64_4X8)"
+          - label: "4 vCPU / 8 GB Linux (LINUX_AMD64_4X8)"
             value: "LINUX_AMD64_4X8"
-          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
+          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
             value: "MAC_M2PRO_32GB"
 
-      - password: "Buildkite org‑level API token (write scope)"
-        key: "bk_token"
+      - text: "bk_token"
+        label: "Buildkite org-level API token (write scope)"
         required: true
         hint: "Create one at https://buildkite.com/user/api-access-tokens"
 
-  # ──────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
   # 2. terraform init & plan
-  # ──────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
   - label: ":terraform: init & plan"
     key: plan
+    agents:
+      queue: "default"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint: ""               # clear default ENTRYPOINT ["terraform"]
+          entrypoint: ""        # clear the default ["terraform"]
           workdir: /workdir
     commands:
       - |
         set -euo pipefail
 
-        # Ensure curl exists (needed for GraphQL calls)
-        if ! command -v curl >/dev/null 2>&1; then
-          if command -v apk >/dev/null 2>&1; then
+        # install curl if missing (needed by GraphQL calls)
+        if ! command -v curl >/dev/null; then
+          if command -v apk >/dev/null; then
             apk add --no-cache curl
           else
             apt-get update -qq && apt-get install -y -qq curl
           fi
         fi
 
+        # pull your form inputs into TF vars
         export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
         export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
         export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
@@ -66,20 +69,20 @@ steps:
         cd terraform
         terraform init -input=false
         terraform plan -out=tf.plan
-    agents:
-      queue: "default"
 
   - wait
 
-  # ──────────────────────────────────────────────
-  # 3. manual approval
-  # ──────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
+  # 3. Approval
+  # ────────────────────────────────────────────────────────────────
   - block: "Apply the Terraform plan?"
 
-  # ──────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
   # 4. terraform apply
-  # ──────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
   - label: ":rocket: terraform apply"
+    agents:
+      queue: "default"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
@@ -89,8 +92,8 @@ steps:
       - |
         set -euo pipefail
 
-        if ! command -v curl >/dev/null 2>&1; then
-          if command -v apk >/dev/null 2>&1; then
+        if ! command -v curl >/dev/null; then
+          if command -v apk >/dev/null; then
             apk add --no-cache curl
           else
             apt-get update -qq && apt-get install -y -qq curl
@@ -104,5 +107,3 @@ steps:
 
         cd terraform
         terraform apply -auto-approve tf.plan
-    agents:
-      queue: "default"
