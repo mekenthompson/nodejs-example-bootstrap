@@ -26,9 +26,7 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint:
-            - "/bin/sh"
-            - "-c"
+          entrypoint: ""        # disable the image’s own entrypoint
     command: |
       export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
       export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
@@ -46,9 +44,7 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint:
-            - "/bin/sh"
-            - "-c"
+          entrypoint: ""        # same trick here
     command: |
       export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
       export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
