@@ -5,7 +5,7 @@ steps:
       - text: "Org slug"
         key: org_slug
         required: true
-        default: "your-org-slug"  # ← replace with your actual org slug
+        default: "your-org-slug"  # replace with your actual org slug
       - text: "Registry name"
         key: registry
         default: "internal-registry"
@@ -25,17 +25,15 @@ steps:
   - label: ":terraform: plan"
     plugins:
       docker#v3.8.0:
-        image: hashicorp/terraform:light
+        image: ghcr.io/philips-labs/terraform:1.5.6
     commands:
-      - |
-        sh -c '
-          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)";
-          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)";
-          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)";
-          export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)";
-          terraform init -input=false;
-          terraform plan -out=tf.plan
-        '
+      - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+      - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+      - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+      - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+      - cd terraform
+      - terraform init -input=false
+      - terraform plan -out=tf.plan
 
   - wait
 
@@ -44,13 +42,11 @@ steps:
   - label: ":rocket: terraform apply"
     plugins:
       docker#v3.8.0:
-        image: hashicorp/terraform:light
+        image: ghcr.io/philips-labs/terraform:1.5.6
     commands:
-      - |
-        sh -c '
-          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)";
-          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)";
-          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)";
-          export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)";
-          terraform apply -auto-approve tf.plan
-        '
+      - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+      - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+      - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+      - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+      - cd terraform
+      - terraform apply -auto-approve tf.plan
