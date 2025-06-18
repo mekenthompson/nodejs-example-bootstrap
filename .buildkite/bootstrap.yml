@@ -1,112 +1,97 @@
 steps:
-  # ────────────────────────────────────────────────────────────────
-  # 1. Interactive form
-  # ────────────────────────────────────────────────────────────────
-  - block: "Configure your Buildkite org"
-    key: "config"
-    prompt: |
-      1. We’ll create a hosted-agent queue, a Package Registry & a sample pipeline  
-      2. Terraform will do **plan** → you approve → **apply**  
-      3. Ends with a green Node.js build on your new queue
-
-      *Fill in the details below and click **Unblock** to start provisioning.*
+  - block: ":rocket: Deploy Buildkite infrastructure?"
     fields:
-      - text: "org_slug"
+      - text: "Buildkite org slug"
         key: "org_slug"
-        default: "bootstrap-example"
         required: true
-
-      - text: "registry"
+        hint: "Find it in your URL: buildkite.com/<org-slug>"
+      - text: "Registry name"
         key: "registry"
-        default: "bootstrap-registry"
         required: true
-
-      - select: "Hosted-agent instance shape"
+        default: "internal"
+        hint: "Name for your package registry"
+      - select: "Hosted agent shape"
         key: "shape"
         required: true
         default: "LINUX_AMD64_2X4"
         options:
-          - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
+          - label: "Linux AMD64 2x4"
             value: "LINUX_AMD64_2X4"
-          - label: "4 vCPU / 8 GB Linux (LINUX_AMD64_4X8)"
-            value: "LINUX_AMD64_4X8"
-          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
-            value: "MAC_M2PRO_32GB"
-
-      - text: "bk_token"
+          - label: "Linux AMD64 4x16"
+            value: "LINUX_AMD64_4X16"
+          - label: "macOS M1 4x12"
+            value: "MACOS_M1_4X12"
+      - text: "Buildkite API token"
         key: "bk_token"
         required: true
-        hint: "Create one at https://buildkite.com/user/api-access-tokens"
+        hint: "Create at buildkite.com/user/api-access-tokens with write_pipelines, read_pipelines, write_organizations, write_clusters, write_suites permissions and GraphQL access"
 
-  # ────────────────────────────────────────────────────────────────
-  # 2. terraform init & plan
-  # ────────────────────────────────────────────────────────────────
-  - label: ":terraform: init & plan"
-    key: plan
-    agents:
-      queue: "default"
-    plugins:
-      - docker#v3.8.0:
-          image: hashicorp/terraform:1.5.7
-          entrypoint: ["/bin/sh", "-c"]
-          workdir: /workdir
+  - label: ":terraform: Plan"
     commands:
       - |
-        set -euo pipefail
-
-        # install curl if missing (needed by GraphQL calls)
-        if ! command -v curl >/dev/null; then
-          if command -v apk >/dev/null; then
-            apk add --no-cache curl
-          else
-            apt-get update -qq && apt-get install -y -qq curl
-          fi
-        fi
-
-        # pull your form inputs into TF vars
-        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-
-        cd terraform
-        terraform init -input=false
-        terraform plan -out=tf.plan
+        docker run --rm \
+          --volume "$PWD:/workdir" \
+          --workdir /workdir \
+          --env BUILDKITE_JOB_ID \
+          --env BUILDKITE_BUILD_ID \
+          --env BUILDKITE_AGENT_ACCESS_TOKEN \
+          --volume /buildkite/agent/bin/buildkite-agent:/usr/bin/buildkite-agent \
+          --entrypoint /bin/sh \
+          hashicorp/terraform:1.5.7 \
+          -c 'set -euo pipefail
+          
+          # Install curl if missing (needed by GraphQL calls)
+          apk add --no-cache curl
+          
+          # Pull your form inputs into TF vars
+          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+          export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+          
+          cd terraform
+          terraform init -input=false
+          terraform plan -out=tf.plan'
 
   - wait
 
-  # ────────────────────────────────────────────────────────────────
-  # 3. Approval
-  # ────────────────────────────────────────────────────────────────
-  - block: "Apply the Terraform plan?"
+  - block: ":rocket: Apply changes?"
+    depends_on: "terraform-plan"
 
-  # ────────────────────────────────────────────────────────────────
-  # 4. terraform apply
-  # ────────────────────────────────────────────────────────────────
-  - label: ":rocket: terraform apply"
-    agents:
-      queue: "default"
-    plugins:
-      - docker#v3.8.0:
-          image: hashicorp/terraform:1.5.7
-          entrypoint: ["/bin/sh", "-c"]
-          workdir: /workdir
+  - label: ":terraform: Apply"
     commands:
       - |
-        set -euo pipefail
+        docker run --rm \
+          --volume "$PWD:/workdir" \
+          --workdir /workdir \
+          --env BUILDKITE_JOB_ID \
+          --env BUILDKITE_BUILD_ID \
+          --env BUILDKITE_AGENT_ACCESS_TOKEN \
+          --volume /buildkite/agent/bin/buildkite-agent:/usr/bin/buildkite-agent \
+          --entrypoint /bin/sh \
+          hashicorp/terraform:1.5.7 \
+          -c 'set -euo pipefail
+          
+          # Install curl if missing (needed by GraphQL calls)
+          apk add --no-cache curl
+          
+          # Pull your form inputs into TF vars
+          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+          export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+          
+          cd terraform
+          terraform apply -auto-approve tf.plan'
 
-        if ! command -v curl >/dev/null; then
-          if command -v apk >/dev/null; then
-            apk add --no-cache curl
-          else
-            apt-get update -qq && apt-get install -y -qq curl
-          fi
-        fi
+  - wait
 
-        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-
-        cd terraform
-        terraform apply -auto-approve tf.plan
+  - label: ":tada: Trigger nodejs-example pipeline"
+    command: |
+      buildkite-agent meta-data get org_slug | \
+        xargs -I {} buildkite-agent pipeline upload --replace <<YAML
+      steps:
+        - trigger: "nodejs-example"
+          build:
+            message: "First build after bootstrap :rocket:"
+      YAML
