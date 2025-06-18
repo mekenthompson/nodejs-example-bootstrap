@@ -17,7 +17,7 @@ steps:
             value: "LINUX_AMD64_4X8"
           - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
             value: "MAC_M2PRO_32GB"
-      - password: "Buildkite *org* API token (write scope)"
+      - text: "Buildkite *org* API token (write scope)"
         key: "bk_token"
         required: true
         secure: true
