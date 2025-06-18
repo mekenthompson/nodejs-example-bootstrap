@@ -2,51 +2,55 @@ steps:
   - block: ":gear: Configure your Buildkite org"
     prompt: "Fill in these details, then click *Unblock* to set up hosted agents, Test Engine, and a Package Registry."
     fields:
-      - text: "org slug"
+      - text: "Org slug"
         key: org_slug
         required: true
-      - text: "registry name"
+        default: "your-org-slug"  # ← replace with your actual org slug
+      - text: "Registry name"
         key: registry
-        default: acme-internal
-      - select: "hosted agent shape"
+        default: "internal-registry"
+      - select: "Hosted agent instance shape"
         key: shape
         options:
           - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
             value: LINUX_AMD64_2X4
           - label: "4 vCPU / 8 GB Linux (LINUX_AMD64_4X8)"
             value: LINUX_AMD64_4X8
-          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
+          - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
             value: MAC_M2PRO_32GB
-      - text: "buildkite org API token"
+      - text: "Buildkite org API token (write scope)"
         key: bk_token
         required: true
-        # WARNING: This will echo the token in logs; Buildkite doesn't support hidden inputs 
 
   - label: ":terraform: plan"
     plugins:
       docker#v3.8.0:
         image: hashicorp/terraform:light
     commands:
-      - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      - terraform init -input=false
-      - terraform plan -out=tf.plan
-    agents:
-      queue: "default"
+      - |
+        sh -c '
+          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)";
+          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)";
+          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)";
+          export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)";
+          terraform init -input=false;
+          terraform plan -out=tf.plan
+        '
 
   - wait
 
   - block: ":white_check_mark: Apply the plan?"
 
   - label: ":rocket: terraform apply"
+    plugins:
+      docker#v3.8.0:
+        image: hashicorp/terraform:light
     commands:
-      - cd terraform
-      - export TF_VAR_org_slug="$ORG_SLUG"
-      - export TF_VAR_registry_name="$REGISTRY"
-      - export TF_VAR_queue_shape="$SHAPE"
-      - export TF_VAR_buildkite_api_token="$BK_TOKEN"
-      - terraform apply -auto-approve tf.plan
-    agents:
-      queue: "default"
+      - |
+        sh -c '
+          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)";
+          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)";
+          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)";
+          export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)";
+          terraform apply -auto-approve tf.plan
+        '
