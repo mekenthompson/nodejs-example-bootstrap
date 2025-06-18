@@ -5,10 +5,10 @@ steps:
       - text: "Org slug"
         key: org_slug
         required: true
-        default: "your-org-slug"  # replace with your actual org slug
+        default: "bootstrap-example"
       - text: "Registry name"
         key: registry
-        default: "internal-registry"
+        default: "bootstrap-registry"
       - select: "Hosted agent instance shape"
         key: shape
         options:
@@ -25,15 +25,16 @@ steps:
   - label: ":terraform: plan"
     plugins:
       docker#v3.8.0:
-        image: ghcr.io/philips-labs/terraform:1.5.6
-    commands:
-      - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      - cd terraform
-      - terraform init -input=false
-      - terraform plan -out=tf.plan
+        image: hashicorp/terraform:1.5.7
+        entrypoint: ["/bin/sh", "-c"]
+    command: |
+      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+      cd terraform
+      terraform init -input=false
+      terraform plan -out=tf.plan
 
   - wait
 
@@ -42,11 +43,12 @@ steps:
   - label: ":rocket: terraform apply"
     plugins:
       docker#v3.8.0:
-        image: ghcr.io/philips-labs/terraform:1.5.6
-    commands:
-      - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      - cd terraform
-      - terraform apply -auto-approve tf.plan
+        image: hashicorp/terraform:1.5.7
+        entrypoint: ["/bin/sh", "-c"]
+    command: |
+      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+      cd terraform
+      terraform apply -auto-approve tf.plan
