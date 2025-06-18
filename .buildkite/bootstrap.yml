@@ -22,50 +22,41 @@ steps:
         key: bk_token
         required: true
 
-steps:
   - label: ":terraform: Plan"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          # blank out Terraform’s own entrypoint so that "terraform" 
-          # doesn't eat our /bin/sh as a sub-command
-          entrypoint: [""]
-          # now exec /bin/sh -e -c "<our script…>"
-          command:
-            - /bin/sh
-            - -e
-            - -c
-            - |
-              # grab our metadata into TF_VARs
-              export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-              export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-              export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-              export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+          entrypoint: ["/bin/sh", "-c"]
+          workdir: terraform
+    command: |
+      # grab our metadata into TF_VARs
+      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
 
-              # run terraform in its subfolder
-              cd terraform
-              terraform init -input=false
-              terraform plan -out=tf.plan
+      # run terraform
+      terraform init -input=false
+      terraform plan -out=tf.plan
+
     artifact_paths:
       - terraform/tf.plan
 
   - wait
 
   - block: ":white_check_mark: Apply the plan?"
+    prompt: "This will run `terraform apply` with the plan we just generated. Proceed?"
 
-  - label: ":rocket: terraform apply"
+  - label: ":rocket: Terraform Apply"
     plugins:
-      docker#v3.8.0:
-        image: hashicorp/terraform:1.5.7
-        entrypoint: [""]
-    command:
-      - /bin/sh
-      - -e
-      - -c
-      - |
-        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-        cd terraform
-        terraform apply -auto-approve tf.plan
+      - docker#v3.8.0:
+          image: hashicorp/terraform:1.5.7
+          entrypoint: ["/bin/sh", "-c"]
+          workdir: terraform
+    command: |
+      export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+      export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+      export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+      export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+
+      terraform apply -auto-approve tf.plan
