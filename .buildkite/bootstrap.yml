@@ -48,7 +48,7 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint: ["/bin/sh"]
+          entrypoint: ["/bin/sh", "-c"]
           workdir: /workdir
     commands:
       - |
@@ -89,7 +89,7 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          entrypoint: ["/bin/sh"]
+          entrypoint: ["/bin/sh", "-c"]
           workdir: /workdir
     commands:
       - |
