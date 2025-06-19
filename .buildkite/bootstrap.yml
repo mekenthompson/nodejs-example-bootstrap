@@ -1,12 +1,13 @@
 # Buildkite Bootstrap Pipeline
-# This pipeline sets up a complete Buildkite infrastructure including:
-# - A Buildkite cluster with hosted agents
-# - A private package registry
-# - A nodejs-example pipeline with test analytics
-# - OIDC authentication for secure deployments
+# -----------------------------
+# This pipeline sets up:
+#   • A Buildkite cluster with hosted agents
+#   • A private package registry
+#   • A nodejs-example pipeline with test analytics
+#   • OIDC authentication for secure deployments
 
 steps:
-  # 1. Prompt user for bootstrap configuration
+  # 1) Prompt for the org, registry & agent shape
   - block: ":rocket: Deploy Buildkite infrastructure?"
     fields:
       - text: "Buildkite org slug"
@@ -33,9 +34,9 @@ steps:
       - text: "Buildkite API token"
         key: "bk_token"
         required: true
-        hint: "Scopes: write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
+        hint: "write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
 
-  # 2. Terraform — Initialize & Plan
+  # 2) Terraform Plan: init & plan with all TF_VAR_* passed in
   - label: ":terraform: Initialize & Plan"
     key: "terraform-plan"
     plugins:
@@ -43,21 +44,20 @@ steps:
           image: hashicorp/terraform:1.5.7
           workdir: /workdir
           mount_buildkite_agent: true
-          entrypoint: ""
-          environment:
-            TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
-            TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
-            TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
+          # ensure all of our TF_VAR_* get injected into the container
+          env:
+            TF_VAR_org_slug: "${BUILDKITE_META_ORG_SLUG}"
+            TF_VAR_registry_name: "${BUILDKITE_META_REGISTRY}"
+            TF_VAR_queue_shape: "${BUILDKITE_META_SHAPE}"
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
           shell:
-            - "sh"
+            - "/bin/sh"
             - "-eo"
             - "pipefail"
             - "-c"
     artifact_paths:
       - "artifacts/terraform.tfplan"
     command: |
-      echo "--- :debug: TF_VAR_buildkite_api_token is '$TF_VAR_buildkite_api_token'"
       mkdir -p artifacts
 
       echo "--- :debug: Host working directory"
@@ -72,19 +72,22 @@ steps:
       terraform -chdir=./terraform init -input=false
 
       echo "--- :terraform: Planning infrastructure changes"
-      terraform -chdir=./terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
+      terraform -chdir=./terraform plan \
+        -input=false \
+        -var="buildkite_api_token=${BUILDKITE_META_BK_TOKEN}" \
+        -out=/workdir/artifacts/terraform.tfplan
 
       echo "--- :mag: Showing planned changes"
       terraform -chdir=./terraform show -no-color /workdir/artifacts/terraform.tfplan
 
   - wait
 
-  # 3. Manual approval before apply
+  # 3) Confirm apply
   - block: ":rocket: Apply infrastructure changes?"
     key: "apply-block"
     depends_on: "terraform-plan"
 
-  # 4. Terraform — Apply
+  # 4) Terraform Apply: apply the exact same plan
   - label: ":terraform: Apply"
     key: "terraform-apply"
     depends_on: "apply-block"
@@ -93,21 +96,19 @@ steps:
           image: hashicorp/terraform:1.5.7
           workdir: /workdir
           mount_buildkite_agent: true
-          entrypoint: ""
-          environment:
-            TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
-            TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
-            TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
+          env:
+            TF_VAR_org_slug: "${BUILDKITE_META_ORG_SLUG}"
+            TF_VAR_registry_name: "${BUILDKITE_META_REGISTRY}"
+            TF_VAR_queue_shape: "${BUILDKITE_META_SHAPE}"
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
           shell:
-            - "sh"
+            - "/bin/sh"
             - "-eo"
             - "pipefail"
             - "-c"
     artifact_paths:
       - "artifacts/terraform-outputs.json"
     command: |
-      echo "--- :debug: TF_VAR_buildkite_api_token is '$TF_VAR_buildkite_api_token'"
       buildkite-agent artifact download "artifacts/terraform.tfplan" .
 
       echo "--- :debug: Host working directory"
@@ -122,7 +123,11 @@ steps:
       terraform -chdir=./terraform init -input=false
 
       echo "--- :terraform: Applying infrastructure changes"
-      terraform -chdir=./terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
+      terraform -chdir=./terraform apply \
+        -input=false \
+        -auto-approve \
+        -var="buildkite_api_token=${BUILDKITE_META_BK_TOKEN}" \
+        /workdir/artifacts/terraform.tfplan
 
       echo "--- :white_check_mark: Infrastructure deployed successfully!"
 
@@ -131,7 +136,7 @@ steps:
 
   - wait
 
-  # 5. Trigger the nodejs-example pipeline
+  # 5) Trigger the freshly-created nodejs-example pipeline
   - label: ":tada: Trigger nodejs-example pipeline"
     key: "trigger-pipeline"
     depends_on: "terraform-apply"
@@ -153,7 +158,7 @@ steps:
   - wait: ~
     continue_on_failure: true
 
-  # 6. Cleanup
+  # 6) Cleanup local artifacts
   - label: ":broom: Cleanup"
     key: "cleanup"
     command: |
