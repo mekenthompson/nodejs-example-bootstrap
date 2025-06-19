@@ -89,6 +89,10 @@ steps:
             - terraform plan -input=false -out=artifacts/terraform.tfplan
             - echo "--- :mag: Showing planned changes"
             - terraform show -no-color artifacts/terraform.tfplan
+            - echo "--- :memo: Capturing plan summary"
+            - PLAN_SUMMARY_LINE=$(terraform show -no-color artifacts/terraform.tfplan | grep -E '^Plan:' | head -1)
+            - echo "Plan summary: $PLAN_SUMMARY_LINE"
+            - buildkite-agent meta-data set PLAN_SUMMARY "$PLAN_SUMMARY_LINE"
             - echo "--- :memo: Annotating plan summary (first 100 lines)"
             - terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
     artifact_paths:
@@ -98,7 +102,8 @@ steps:
   # 3. Pause for manual approval
   #───────────────────────────────────────────────────────────────────────────────
   - wait
-  - block: ":white_check_mark: Apply infrastructure changes?"
+  - block: ":white_check_mark: Apply infrastructure changes? (${BUILDKITE_META_PLAN_SUMMARY})"
+    prompt: "Terraform summary: ${BUILDKITE_META_PLAN_SUMMARY}"
 
   #───────────────────────────────────────────────────────────────────────────────
   # 4. Terraform — Apply
@@ -140,6 +145,8 @@ steps:
               grep -E "^(buildkite_|module|resource)" apply.log | head -40 | buildkite-agent annotate --style "info" --context "tf-changes" --append || true
             - echo "--- :floppy_disk: Saving outputs"
             - terraform output -json > artifacts/terraform-outputs.json
+            - PLAN_SUMMARY=$(terraform show -no-color artifacts/terraform.tfplan | grep -E '^Plan:' | head -1)
+            - buildkite-agent meta-data set PLAN_SUMMARY "$PLAN_SUMMARY"
             - echo "--- :memo: Annotating Terraform outputs"
             - terraform output | buildkite-agent annotate --style "success" --context "tf-outputs" --append
             - echo "--- :information_source: Exporting meta-data"
