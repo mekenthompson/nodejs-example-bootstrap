@@ -1,6 +1,7 @@
 # .buildkite/bootstrap.yml
+
 steps:
-  # Step 1: Interactive form to collect configuration
+  # 1. Interactive form
   - block: ":rocket: Deploy Buildkite infrastructure?"
     fields:
       - text: "Buildkite org slug"
@@ -29,43 +30,36 @@ steps:
         required: true
         hint: "Needs write_pipelines, write_organizations, etc."
 
-  # Step 2: Terraform Initialize & Plan
+  # 2. Terraform init & plan
   - label: ":terraform: Initialize & Plan"
     key: "terraform-plan"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
           workdir: /workdir
-          volumes:
-            - "${BUILDKITE_BUILD_CHECKOUT_PATH}:/workdir"
     artifact_paths:
       - "artifacts/terraform.tfplan"
     commands:
       - mkdir -p artifacts
       - echo "--- Host checkout path: $BUILDKITE_BUILD_CHECKOUT_PATH"
       - ls -al /workdir
-      - echo "--- Installing curl & jq"
       - apk add --no-cache curl jq
-      - echo "--- Setting up TF vars"
       - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
       - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
       - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
       - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      - echo "--- Terraform init"
       - terraform -chdir=terraform init -input=false
-      - echo "--- Terraform plan"
       - terraform -chdir=terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
-      - echo "--- Showing plan"
       - terraform -chdir=terraform show -no-color /workdir/artifacts/terraform.tfplan
 
   - wait
 
-  # Step 3: Manual approval
+  # 3. Manual approval
   - block: ":rocket: Apply infrastructure changes?"
     key: "apply-block"
     depends_on: "terraform-plan"
 
-  # Step 4: Terraform Apply
+  # 4. Terraform apply
   - label: ":terraform: Apply"
     key: "terraform-apply"
     depends_on: "apply-block"
@@ -73,8 +67,6 @@ steps:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
           workdir: /workdir
-          volumes:
-            - "${BUILDKITE_BUILD_CHECKOUT_PATH}:/workdir"
     artifact_paths:
       - "artifacts/terraform-outputs.json"
     commands:
@@ -82,45 +74,41 @@ steps:
       - mkdir -p artifacts
       - echo "--- Host checkout path: $BUILDKITE_BUILD_CHECKOUT_PATH"
       - ls -al /workdir
-      - echo "--- Installing curl & jq"
       - apk add --no-cache curl jq
-      - echo "--- Setting up TF vars"
       - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
       - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
       - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
       - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      - echo "--- Terraform init"
       - terraform -chdir=terraform init -input=false
-      - echo "--- Terraform apply"
       - terraform -chdir=terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
-      - echo "--- Saving outputs"
       - terraform -chdir=terraform output -json > /workdir/artifacts/terraform-outputs.json
 
   - wait
 
-  # Step 5: Trigger the nodejs-example pipeline
+  # 5. Trigger example pipeline
   - label: ":tada: Trigger nodejs-example pipeline"
     key: "trigger-pipeline"
     depends_on: "terraform-apply"
-    command: |
-      ORG=$(buildkite-agent meta-data get org_slug)
-      cat <<YAML | buildkite-agent pipeline upload
-      steps:
-        - trigger: "nodejs-example"
-          label: ":nodejs: First build"
-          async: true
-          build:
-            message: "First build after bootstrap :rocket:"
-            branch: "main"
-      YAML
-      echo "Visit https://buildkite.com/${ORG}/nodejs-example"
+    commands:
+      - ORG=$(buildkite-agent meta-data get org_slug)
+      - |
+        cat <<YAML | buildkite-agent pipeline upload
+        steps:
+          - trigger: "nodejs-example"
+            label: ":nodejs: First build"
+            async: true
+            build:
+              message: "First build after bootstrap :rocket:"
+              branch: "main"
+        YAML
+      - echo "Visit https://buildkite.com/${ORG}/nodejs-example"
 
   - wait: ~
     continue_on_failure: true
 
-  # Step 6: Cleanup
+  # 6. Cleanup
   - label: ":broom: Cleanup"
     key: "cleanup"
-    command: |
-      rm -rf artifacts/
-      echo "Bootstrap complete!"
+    commands:
+      - rm -rf artifacts
+      - echo "Bootstrap complete!"
