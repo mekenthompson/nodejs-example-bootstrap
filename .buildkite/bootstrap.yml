@@ -43,19 +43,19 @@ steps:
           mount_buildkite_agent: true
           entrypoint: ""   # disable terraform's default entrypoint
           shell: [ "sh", "-eo", "pipefail", "-c" ]
-          command: |
-            echo "=== Checking provider permissions ==="
-            ls -lR .terraform/providers/registry.terraform.io/buildkite/buildkite
-            echo "=== Checking mounts ==="
-            mount | grep workdir
-            echo "=== Checking current directory permissions ==="
-            ls -ld /workdir
-            echo "=== Checking provider binary permissions ==="
-            if [ -f ".terraform/providers/registry.terraform.io/buildkite/buildkite/1.20.0/linux_amd64/terraform-provider-buildkite_v1.20.0" ]; then
-              ls -l ".terraform/providers/registry.terraform.io/buildkite/buildkite/1.20.0/linux_amd64/terraform-provider-buildkite_v1.20.0"
-            else
-              echo "Provider binary not found"
-            fi
+          command:
+            - echo "=== Checking provider permissions ==="
+            - ls -lR .terraform/providers/registry.terraform.io/buildkite/buildkite
+            - echo "=== Checking mounts ==="
+            - mount | grep workdir
+            - echo "=== Checking current directory permissions ==="
+            - ls -ld /workdir
+            - echo "=== Checking provider binary permissions ==="
+            - if [ -f ".terraform/providers/registry.terraform.io/buildkite/buildkite/1.20.0/linux_amd64/terraform-provider-buildkite_v1.20.0" ]; then
+            - ls -l ".terraform/providers/registry.terraform.io/buildkite/buildkite/1.20.0/linux_amd64/terraform-provider-buildkite_v1.20.0"
+            - else
+            - echo "Provider binary not found"
+            - fi
 
   #───────────────────────────────────────────────────────────────────────────────
   # 2. Terraform — Init & Plan
