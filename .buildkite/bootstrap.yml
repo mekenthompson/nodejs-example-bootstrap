@@ -159,7 +159,7 @@ steps:
       - |
         echo "--- :rocket: Triggering nodejs-example"
         ORG_SLUG=$(buildkite-agent meta-data get org_slug)
-        REGISTRY=$(buildkite-agent meta-data get REGISTRY_SLUG)
+        REGISTRY=$(buildkite-agent meta-data get registry)
 
         buildkite-agent pipeline upload <<PIPELINE
         steps:
@@ -169,7 +169,7 @@ steps:
               message: "First build after bootstrap :rocket:"
               env:
                 QUEUE_KEY: "default"
-                REGISTRY_SLUG: "$REGISTRY"
+                REGISTRY: "$REGISTRY"
         PIPELINE
 
   #───────────────────────────────────────────────────────────────────────────────
