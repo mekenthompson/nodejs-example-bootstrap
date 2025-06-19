@@ -153,6 +153,8 @@ steps:
             - echo "--- :information_source: Exporting meta-data"
             - buildkite-agent meta-data set QUEUE_KEY default
             - buildkite-agent meta-data set REGISTRY_SLUG "${TF_VAR_registry_name}"
+            - buildkite-agent meta-data set org_slug "$TF_VAR_org_slug"
+            - buildkite-agent meta-data set bk_token "$TF_VAR_buildkite_api_token"
     artifact_paths:
       - "terraform/artifacts/terraform-outputs.json"
 
@@ -163,6 +165,9 @@ steps:
     key: "verify"
     depends_on:
       - "apply"
+    env:
+      ORG_SLUG: "${BUILDKITE_META_ORG_SLUG}"
+      BK_TOKEN: "${BUILDKITE_META_BK_TOKEN}"
     command:
       - |
         echo "--- :mag: Checking pipeline existence"
@@ -171,7 +176,10 @@ steps:
         # Fallback: use environment variables injected by Buildkite for meta-data keys
         [ -z "$ORG_SLUG" ] && ORG_SLUG="$BUILDKITE_META_ORG_SLUG"
         [ -z "$BK_TOKEN" ] && BK_TOKEN="$BUILDKITE_META_BK_TOKEN"
-        echo "ORG_SLUG=$ORG_SLUG"
+        # Fallback again if still empty
+[ -z "$ORG_SLUG" ] && ORG_SLUG=$(buildkite-agent meta-data get org_slug || true)
+[ -z "$BK_TOKEN" ] && BK_TOKEN=$(buildkite-agent meta-data get bk_token || true)
+echo "ORG_SLUG=$ORG_SLUG"
         echo "BK_TOKEN length=$(echo -n "$BK_TOKEN" | wc -c) (should be >0)"
         API_ENDPOINT="https://api.buildkite.com/v2/organizations/${ORG_SLUG}/pipelines/nodejs-example"
         echo "Calling $API_ENDPOINT"
@@ -190,6 +198,9 @@ steps:
   - label: ":tada: Trigger nodejs-example pipeline"
     depends_on:
       - "verify"
+    env:
+      ORG_SLUG: "${BUILDKITE_META_ORG_SLUG}"
+      REGISTRY: "${BUILDKITE_META_REGISTRY}"
     command:
       - |
         echo "--- :rocket: Triggering nodejs-example"
