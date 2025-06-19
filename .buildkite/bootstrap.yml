@@ -83,29 +83,28 @@ steps:
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
             TF_DATA_DIR:                "/tmp/terraform_data"
           command:
-            - cd terraform
-            - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-            - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-            - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-            - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-            - mkdir -p "$TF_DATA_DIR"
-            - mkdir -p artifacts
-            - echo "--- :terraform: Initializing Terraform"
-            - terraform init -input=false -upgrade
-            - echo "--- :terraform: Planning infra changes"
-            - terraform plan -input=false -out=artifacts/terraform.tfplan
-            - echo "--- :mag: Showing planned changes"
-            - terraform show -no-color artifacts/terraform.tfplan
-            - echo "--- :memo: Capturing plan summary"
-            - PLAN_SUMMARY_LINE=$(terraform show -no-color artifacts/terraform.tfplan | grep -E '^Plan:' | head -1)
-            - echo "Plan summary: $PLAN_SUMMARY_LINE"
-            - echo "--- :information_source: Caching user inputs as meta-data"
-            - buildkite-agent meta-data set org_slug "$ORG_SLUG"
-            - buildkite-agent meta-data set bk_token "$BK_TOKEN"
-            - buildkite-agent meta-data set PLAN_SUMMARY "$PLAN_SUMMARY_LINE"
-            - echo "--- :memo: Annotating plan summary (first 100 lines)"
-            - terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
             - |
+              org_slug="$(buildkite-agent meta-data get org_slug)"
+              registry_name="$(buildkite-agent meta-data get registry)"
+              queue_shape="$(buildkite-agent meta-data get shape)"
+              buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+              mkdir -p "$TF_DATA_DIR"
+              mkdir -p artifacts
+              echo "--- :terraform: Initializing Terraform"
+              terraform init -input=false -upgrade
+              echo "--- :terraform: Planning infra changes"
+              terraform plan -input=false -out=artifacts/terraform.tfplan
+              echo "--- :mag: Showing planned changes"
+              terraform show -no-color artifacts/terraform.tfplan
+              echo "--- :memo: Capturing plan summary"
+              PLAN_SUMMARY_LINE=$(terraform show -no-color artifacts/terraform.tfplan | grep -E '^Plan:' | head -1)
+              echo "Plan summary: $PLAN_SUMMARY_LINE"
+              echo "--- :information_source: Caching user inputs as meta-data"
+              buildkite-agent meta-data set org_slug "$org_slug"
+              buildkite-agent meta-data set bk_token "$buildkite_api_token"
+              buildkite-agent meta-data set PLAN_SUMMARY "$PLAN_SUMMARY_LINE"
+              echo "--- :memo: Annotating plan summary (first 100 lines)"
+              terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
               echo "--- :rocket: Uploading approval block"
               buildkite-agent pipeline upload <<YML
               steps:
@@ -135,7 +134,7 @@ steps:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
           # mount repo at /workdir (repo root)
-          workdir: "/workdir"
+          workdir: "/workdir/terraform"
           mount_buildkite_agent: true
           entrypoint: ""   # disable terraform's default entrypoint
           shell: [ "sh", "-eo", "pipefail", "-c" ]
@@ -146,17 +145,15 @@ steps:
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
             TF_DATA_DIR:                "/tmp/terraform_data"
           command:
-            - cd terraform
-            - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-            - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-            - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-            - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-            - mkdir -p "$TF_DATA_DIR"
-            - mkdir -p artifacts
-            - echo "--- :terraform: Initializing Terraform"
-            - terraform init -input=false
-            - echo "--- :terraform: Applying infra changes"
             - |
+              org_slug="$(buildkite-agent meta-data get org_slug)"
+              registry_name="$(buildkite-agent meta-data get registry)"
+              queue_shape="$(buildkite-agent meta-data get shape)"
+              buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+              mkdir -p "$TF_DATA_DIR"
+              mkdir -p artifacts
+              echo "--- :terraform: Initializing Terraform"
+              terraform init -input=false
               echo "--- :terraform: Applying infra changes"
               terraform apply -input=false -auto-approve artifacts/terraform.tfplan | tee apply.log
               APPLY_SUMMARY=$(grep -E "Apply complete!" apply.log || true)
