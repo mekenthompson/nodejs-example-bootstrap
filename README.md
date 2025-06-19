@@ -1,106 +1,73 @@
-# Node.js Example ‑ **Buildkite Org Bootstrap**
+# 🧰 Node.js Example – Buildkite Org Bootstrapper
 
-[![Add to Buildkite](https://buildkite.com/button.svg)](https://buildkite.com/new?import_repo=https://github.com/your‑org/nodejs‑example‑bootstrap)
+[![Add to Buildkite](https://buildkite.com/button.svg)](https://buildkite.com/new?import_repo=https://github.com/mekenthompson/nodejs-example-bootstrap)
 
-This repository **bootstraps a brand‑new Buildkite organisation** using an _interactive_ Buildkite pipeline.  
-In one click it provisions:
+**This repo bootstraps a complete Buildkite org from scratch—by running a Buildkite pipeline.**
 
-* A Buildkite **cluster** with a **hosted‑agent queue** (Linux _or_ macOS shape of your choice)
-* A private **Package Registry**
-* A pipeline‑scoped **Test Engine** (Analytics) token
-* This **Node.js demo pipeline** pre‑wired to:
-  * build a Docker image
-  * split & report Jest tests via Test Engine
-  * push the image to the Package Registry via OIDC (no long‑lived secrets)
+It’s a pipeline that deploys pipelines. In one go, it wires up:
 
-All the heavy lifting is done by **Terraform**, executed from inside Buildkite.
+- ✅ A `nodejs-example` pipeline that builds, tests, and packages a Node app
+- 🧪 Test Analytics setup (with token provisioning)
+- 📦 A Package Registry for Docker images
+- 💻 A hosted agent cluster (Linux or macOS—your call)
+- 🔐 Optional OIDC auth for pushing to the registry
 
----
-
-## ✨ What you get
-
-| Resource                | Purpose                                             |
-|-------------------------|-----------------------------------------------------|
-| **Cluster + Hosted queue** | Zero‑infra compute for every pipeline job          |
-| **`<org>/<registry>`**  | Stores Docker images + SBOM & provenance            |
-| **`nodejs-example` pipeline** | Green build → test (parallel) → package on first run |
-| **Analytics token**     | Enables flaky‑test detection & timing insights      |
+The whole thing runs from an interactive Buildkite pipeline and uses Terraform under the hood.
 
 ---
 
-## 🚀 Quick‑start
+## ✨ What You Get
 
-1. **Fork** this repo into your GitHub organisation.
-2. In Buildkite, click **“New pipeline → GitHub → nodejs-example-bootstrap”**.  
-   Make sure the pipeline **YAML steps** path is `.buildkite/bootstrap.yml`.
-3. **First build starts** and shows an **Interactive Block**.
-   Fill out:
-   * **Buildkite organisation slug** (default `bootstrap-example`)
-   * **Registry name** (default `bootstrap-example`)
-   * **Hosted‑agent shape** (`LINUX_AMD64_2X4` etc.)
-   * **Org‑level API token** with _write_ scope
-4. Click **“Unblock”** → Terraform `plan` runs.  
-   Review, then hit **“Apply”**.
-5. Terraform provisions everything, then triggers build #2: your new `nodejs-example` pipeline.
+| Resource                    | Purpose                                                   |
+|-----------------------------|-----------------------------------------------------------|
+| **Cluster + Hosted Queue**  | Zero-infra compute for every pipeline job                 |
+| **`<org>/<registry>`**      | Stores Docker images with SBOM & SLSA provenance          |
+| **`nodejs-example` pipeline** | First-class CI/CD with test splitting and image publish  |
+| **Test Analytics Token**    | Enables flaky test detection and per-step timing insights |
 
-_Total time: ≈ 5 minutes._
+---
+
+## 🚀 Quick Start
+
+1. **Fork** this repo to your GitHub org.
+2. In Buildkite, click **“New pipeline → GitHub → nodejs-example-bootstrap”**
+   - Set the **YAML steps path** to `.buildkite/bootstrap.yml`
+3. Kick off the first build—this will run the **interactive bootstrap pipeline**.
+   It’ll prompt you to fill in:
+   - **Buildkite org slug** (default: `bootstrap-example`)
+   - **Registry name** (default: `bootstrap-example`)
+   - **Hosted agent shape** (`LINUX_AMD64_2X4` etc.)
+   - **Org-level API token** (needs `write_pipelines`, `write_organizations`, etc.)
+4. Click **“Unblock”** to run the Terraform `plan`, then confirm **“Apply”**
+5. Once applied, it’ll trigger build #2: the brand-new `nodejs-example` pipeline.
+
+⏱️ _Total setup time: ~5 minutes_
 
 ---
 
 ## 🔧 Prerequisites
 
-* Buildkite organisation (owner access)
-* Org‑level **GraphQL/REST API token** (`write_pipelines`, `read_pipelines`, `write_organizations`)
-* DockerHub (or other) login on the agents is **NOT** required—images stay inside Buildkite
+- A Buildkite organisation (with owner access)
+- Org-level **GraphQL + REST API token**  
+  _(Scopes: `write_pipelines`, `read_pipelines`, `write_organizations`)_
+- No DockerHub login required—the image stays inside Buildkite
 
 ---
 
-## 🗂 Repository layout
+## 🏗️ Repo Layout
 
-```
+```text
 .
-├── app/                   # Simple Express API + Jest tests
+├── app/                     # Node.js app with Express + Jest tests
 │   ├── Dockerfile
 │   ├── package.json
 │   └── …
 ├── .buildkite/
-│   ├── bootstrap.yml      # Interactive Terraform deploy pipeline
-│   └── pipeline.yml       # App build → test → package
+│   ├── bootstrap.yml        # Bootstrap pipeline for provisioning infra
+│   └── pipeline.yml         # App pipeline (build → test → package)
 └── terraform/
     ├── provider.tf
     ├── cluster.tf
     ├── registry.tf
     ├── analytics_token.tf
     └── pipeline.tf
-```
-
----
-
-## 🏃 How it works (high‑level)
-
-1. **Bootstrap pipeline** runs on Buildkite’s default hosted queue.
-2. **Block step** collects config; values become env vars.
-3. **Terraform `plan` → `apply`** creates Buildkite resources via:
-   * official Terraform provider for cluster/queue + pipeline
-   * one‑off GraphQL calls for registries & analytics token
-4. Buildkite **automatically triggers** the new `nodejs-example` pipeline.
-5. **Test Engine** uploads timing & flaky data; **Package Registry** stores the image.
-
----
-
-## 🧹 Cleaning up
-
-To delete everything:
-
-1. Re‑run the **bootstrap pipeline**; at the `plan` step choose `terraform destroy` instead, or  
-2. Run `terraform destroy` locally with the same variables/API token.
-
----
-
-## 📄 License
-
-MIT — see `LICENSE`.
-
----
-
-### Inspired by <https://github.com/buildkite/nodejs-example>
