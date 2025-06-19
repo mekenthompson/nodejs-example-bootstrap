@@ -64,7 +64,7 @@ steps:
         ls -al
         ls -al terraform || true
 
-        HOST_DIR="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+        HOST_DIR="$PWD"
         echo "--- :debug: Using HOST_DIR=$HOST_DIR"
 
         # Run Terraform inside a Docker container for consistency
@@ -151,7 +151,7 @@ steps:
         ls -al
         ls -al terraform || true
 
-        HOST_DIR="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+        HOST_DIR="$PWD"
         echo "--- :debug: Using HOST_DIR=$HOST_DIR"
 
         # Run Terraform apply in Docker (same setup as plan step)
