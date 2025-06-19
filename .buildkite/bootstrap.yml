@@ -148,7 +148,7 @@ steps:
 
         buildkite-agent pipeline upload <<PIPELINE
         steps:
-          - trigger: "${ORG_SLUG}/nodejs-example"
+          - trigger: "nodejs-example"
             async: true
             build:
               message: "First build after bootstrap :rocket:"
