@@ -115,41 +115,26 @@ steps:
             TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
             TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
+            TF_DATA_DIR:                "/tmp/terraform_data"
+          command:
+            - cd terraform
+            - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+            - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+            - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+            - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+            - mkdir -p "$TF_DATA_DIR"
+            - mkdir -p artifacts
+            - echo "--- :terraform: Initializing Terraform"
+            - terraform init -input=false
+            - echo "--- :terraform: Applying infra changes"
+            - terraform apply -input=false -auto-approve artifacts/terraform.tfplan
+            - echo "--- :floppy_disk: Saving outputs"
+            - terraform output -json > artifacts/terraform-outputs.json
+            - echo "--- :information_source: Exporting meta-data"
+            - buildkite-agent meta-data set QUEUE_KEY default
+            - buildkite-agent meta-data set REGISTRY_SLUG "${TF_VAR_registry_name}"
     artifact_paths:
       - "terraform/artifacts/terraform-outputs.json"
-    command:
-      - |
-
-        cd terraform
-
-        # Export Terraform variables from Buildkite meta-data into environment variables
-        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-
-        # Use container-local directory for Terraform data/plugins to ensure executable permissions
-        export TF_DATA_DIR="/tmp/terraform_data"
-        mkdir -p "$TF_DATA_DIR"
-
-        # Ensure artifacts directory exists
-        mkdir -p "$TF_DATA_DIR"
-
-        echo "--- :terraform: Initializing Terraform"
-        terraform init -input=false
-
-        # Ensure artifacts directory exists
-        mkdir -p artifacts
-
-        echo "--- :terraform: Applying infra changes"
-        terraform apply -input=false -auto-approve artifacts/terraform.tfplan
-
-        echo "--- :floppy_disk: Saving outputs"
-        terraform output -json > artifacts/terraform-outputs.json
-
-        echo "--- :information_source: Exporting meta-data"
-        buildkite-agent meta-data set QUEUE_KEY default
-        buildkite-agent meta-data set REGISTRY_SLUG "${TF_VAR_registry_name}"
 
   #───────────────────────────────────────────────────────────────────────────────
   # 5. Trigger the nodejs-example pipeline
