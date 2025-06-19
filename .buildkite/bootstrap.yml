@@ -177,9 +177,9 @@ steps:
         [ -z "$ORG_SLUG" ] && ORG_SLUG="$BUILDKITE_META_ORG_SLUG"
         [ -z "$BK_TOKEN" ] && BK_TOKEN="$BUILDKITE_META_BK_TOKEN"
         # Fallback again if still empty
-[ -z "$ORG_SLUG" ] && ORG_SLUG=$(buildkite-agent meta-data get org_slug || true)
-[ -z "$BK_TOKEN" ] && BK_TOKEN=$(buildkite-agent meta-data get bk_token || true)
-echo "ORG_SLUG=$ORG_SLUG"
+        [ -z "$ORG_SLUG" ] && ORG_SLUG=$(buildkite-agent meta-data get org_slug || true)
+        [ -z "$BK_TOKEN" ] && BK_TOKEN=$(buildkite-agent meta-data get bk_token || true)
+        echo "ORG_SLUG=$ORG_SLUG"
         echo "BK_TOKEN length=$(echo -n "$BK_TOKEN" | wc -c) (should be >0)"
         API_ENDPOINT="https://api.buildkite.com/v2/organizations/${ORG_SLUG}/pipelines/nodejs-example"
         echo "Calling $API_ENDPOINT"
