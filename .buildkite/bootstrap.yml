@@ -6,47 +6,44 @@ steps:
   #───────────────────────────────────────────────────────────────────────────────
   - block: ":rocket: Deploy Buildkite infrastructure"
     fields:
-      - text:
-          label: "Buildkite org slug"          # human-friendly prompt
-          key: org_slug                       # must match meta-data lookup
-          required: true
-          default: "bootstrap-example"
-          hint: "Find it in your URL: buildkite.com/<org-slug>"
-      - text:
-          label: "Registry name"
-          key: registry
-          required: true
-          default: "bootstrap-example"
-          hint: "Must be unique"
-      - select:
-          label: "Hosted agent shape"
-          key: shape
-          required: true
-          default: "LINUX_AMD64_2X4"
-          options:
-            - label: "2 vCPU / 4 GB Linux"
-              value: "LINUX_AMD64_2X4"
-            - label: "4 vCPU / 16 GB Linux"
-              value: "LINUX_AMD64_4X16"
-            - label: "macOS M1 4 vCPU / 12 GB"
-              value: "MACOS_M1_4X12"
-      - password:
-          label: "Buildkite API token"
-          key: bk_token
-          required: true
-          hint: "Scopes: write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
+      - text: "Buildkite org slug"                     # prompt text
+        key: org_slug                                  # metadata key
+        required: true
+        default: "bootstrap-example"
+        hint: "Find it in your URL: buildkite.com/<org-slug>"
+      - text: "Registry name"
+        key: registry
+        required: true
+        default: "bootstrap-example"
+        hint: "Must be unique"
+      - select: "Hosted agent shape"
+        key: shape
+        required: true
+        default: "LINUX_AMD64_2X4"
+        options:
+          - label: "2 vCPU / 4 GB Linux"
+            value: "LINUX_AMD64_2X4"
+          - label: "4 vCPU / 16 GB Linux"
+            value: "LINUX_AMD64_4X16"
+          - label: "macOS M1 4 vCPU / 12 GB"
+            value: "MACOS_M1_4X12"
+      - password: "Buildkite API token"
+        key: bk_token
+        required: true
+        hint: "Scopes: write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
 
   #───────────────────────────────────────────────────────────────────────────────
   # 2. Terraform — Init & Plan
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Initialize & Plan"
-    key: terraform-plan
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          workdir: "/workdir/terraform"            # cd into repo’s ./terraform
-          mount_buildkite_agent: true              # expose buildkite-agent
-          shell: [ "sh", "-eo", "pipefail", "-c" ]  # override ENTRYPOINT to sh :contentReference[oaicite:0]{index=0}
+          # mount your repo at /workdir; cd into /workdir/terraform
+          workdir: "/workdir/terraform"
+          mount_buildkite_agent: true
+          # run your commands via sh, not terraform’s ENTRYPOINT
+          shell: [ "sh", "-eo", "pipefail", "-c" ]
           env:
             TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
             TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
@@ -66,7 +63,7 @@ steps:
         terraform show -no-color /workdir/artifacts/terraform.tfplan
 
   #───────────────────────────────────────────────────────────────────────────────
-  # 3. Manual approval
+  # 3. Pause for manual approval
   #───────────────────────────────────────────────────────────────────────────────
   - wait
   - block: ":white_check_mark: Apply infrastructure changes?"
@@ -75,8 +72,6 @@ steps:
   # 4. Terraform — Apply
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Apply"
-    key: terraform-apply
-    depends_on: terraform-plan
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
@@ -102,11 +97,10 @@ steps:
   # 5. Trigger the nodejs-example pipeline
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":tada: Trigger nodejs-example pipeline"
-    depends_on: terraform-apply
     command:
       - |
         echo "--- :rocket: Triggering nodejs-example"
-        ORG_SLUG="$(buildkite-agent meta-data get org_slug)"
+        ORG_SLUG=$(buildkite-agent meta-data get org_slug)
         buildkite-agent pipeline upload << 'PIPELINE'
         steps:
           - trigger: "nodejs-example"
