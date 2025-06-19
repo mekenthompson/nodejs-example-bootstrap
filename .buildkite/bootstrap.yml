@@ -33,6 +33,31 @@ steps:
         hint: "Scopes: write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
 
   #───────────────────────────────────────────────────────────────────────────────
+  # 2. Debug - Check permissions and mounts
+  #───────────────────────────────────────────────────────────────────────────────
+  - label: ":bug: Debug - Check permissions and mounts"
+    plugins:
+      - docker#v3.8.0:
+          image: hashicorp/terraform:1.5.7
+          workdir: "/workdir"
+          mount_buildkite_agent: true
+          entrypoint: ""   # disable terraform's default entrypoint
+          shell: [ "sh", "-eo", "pipefail", "-c" ]
+          command: |
+            echo "=== Checking provider permissions ==="
+            ls -lR .terraform/providers/registry.terraform.io/buildkite/buildkite
+            echo "=== Checking mounts ==="
+            mount | grep workdir
+            echo "=== Checking current directory permissions ==="
+            ls -ld /workdir
+            echo "=== Checking provider binary permissions ==="
+            if [ -f ".terraform/providers/registry.terraform.io/buildkite/buildkite/1.20.0/linux_amd64/terraform-provider-buildkite_v1.20.0" ]; then
+              ls -l ".terraform/providers/registry.terraform.io/buildkite/buildkite/1.20.0/linux_amd64/terraform-provider-buildkite_v1.20.0"
+            else
+              echo "Provider binary not found"
+            fi
+
+  #───────────────────────────────────────────────────────────────────────────────
   # 2. Terraform — Init & Plan
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Initialize & Plan"
@@ -62,11 +87,15 @@ steps:
         export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
         export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
 
+        # Use container-local directory for Terraform data/plugins to ensure executable permissions
+        export TF_DATA_DIR="/tmp/terraform_data"
+        mkdir -p "$TF_DATA_DIR"
+
         # Ensure artifacts directory
         mkdir -p artifacts
 
         echo "--- :terraform: Initializing Terraform"
-        terraform init -input=false
+        terraform init -input=false -upgrade
 
         echo "--- :terraform: Planning infra changes"
         terraform plan -input=false -out=artifacts/terraform.tfplan
@@ -109,6 +138,16 @@ steps:
         export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
         export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
         export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+
+        # Use container-local directory for Terraform data/plugins to ensure executable permissions
+        export TF_DATA_DIR="/tmp/terraform_data"
+        mkdir -p "$TF_DATA_DIR"
+
+        # Ensure artifacts directory exists
+        mkdir -p "$TF_DATA_DIR"
+
+        echo "--- :terraform: Initializing Terraform"
+        terraform init -input=false
 
         # Ensure artifacts directory exists
         mkdir -p artifacts
