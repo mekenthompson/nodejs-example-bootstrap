@@ -16,6 +16,7 @@ steps:
       - text: "Buildkite org slug"
         key: "org_slug"
         required: true
+        default: "bootstrap-example"
         hint: "Find it in your URL: buildkite.com/<org-slug>"
       
       # Registry name - will create a package registry for Docker images
@@ -23,7 +24,7 @@ steps:
       - text: "Registry name"
         key: "registry"
         required: true
-        default: "internal"
+        default: "bootstrap-example"
         hint: "Name for your package registry (must be unique)"
       
       # Hosted agent configuration - determines the compute resources
@@ -80,9 +81,9 @@ steps:
           # Export Terraform variables from the form inputs
           # These are retrieved from Buildkite metadata (set by the block step)
           echo "--- :key: Setting up Terraform variables"
-          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug || echo bootstrap-example)"
+          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry || echo bootstrap-example)"
+          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape || echo LINUX_AMD64_2X4)"
           export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
           
           # Initialize Terraform - downloads providers and sets up backend
@@ -144,9 +145,9 @@ steps:
           
           # Set up Terraform variables (must match plan step exactly)
           echo "--- :key: Setting up Terraform variables"
-          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+          export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug || echo bootstrap-example)"
+          export TF_VAR_registry_name="$(buildkite-agent meta-data get registry || echo bootstrap-example)"
+          export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape || echo LINUX_AMD64_2X4)"
           export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
           
           # Apply the infrastructure changes

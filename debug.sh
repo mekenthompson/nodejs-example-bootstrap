@@ -29,8 +29,8 @@ echo ""
 read -p "Buildkite org slug [bootstrap-example]: " ORG_SLUG
 ORG_SLUG=${ORG_SLUG:-bootstrap-example}
 
-read -p "Registry name [bootstrap-registry]: " REGISTRY_NAME
-REGISTRY_NAME=${REGISTRY_NAME:-bootstrap-registry}
+read -p "Registry name [bootstrap-example]: " REGISTRY_NAME
+REGISTRY_NAME=${REGISTRY_NAME:-bootstrap-example}
 
 read -p "Queue shape [LINUX_AMD64_2X4]: " QUEUE_SHAPE
 QUEUE_SHAPE=${QUEUE_SHAPE:-LINUX_AMD64_2X4}

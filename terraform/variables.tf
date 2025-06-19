@@ -14,7 +14,7 @@ variable "org_slug" {
 variable "registry_name" {
   type        = string
   description = "Name for the package registry"
-  default     = "bootstrap-registry"
+  default     = "bootstrap-example"
 }
 
 variable "queue_shape" {
