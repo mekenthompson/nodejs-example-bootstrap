@@ -129,9 +129,19 @@ steps:
             - echo "--- :terraform: Initializing Terraform"
             - terraform init -input=false
             - echo "--- :terraform: Applying infra changes"
-            - terraform apply -input=false -auto-approve artifacts/terraform.tfplan
+            - |
+              echo "--- :terraform: Applying infra changes"
+              terraform apply -input=false -auto-approve artifacts/terraform.tfplan | tee apply.log
+              APPLY_SUMMARY=$(grep -E "Apply complete!" apply.log || true)
+              if [ -n "$APPLY_SUMMARY" ]; then
+                buildkite-agent annotate --style "info" --context "tf-summary" "${APPLY_SUMMARY}" --append
+              fi
+              echo "--- :mag: Resource changes (first 40 lines)"
+              grep -E "^(buildkite_|module|resource)" apply.log | head -40 | buildkite-agent annotate --style "info" --context "tf-changes" --append || true
             - echo "--- :floppy_disk: Saving outputs"
             - terraform output -json > artifacts/terraform-outputs.json
+            - echo "--- :memo: Annotating Terraform outputs"
+            - terraform output | buildkite-agent annotate --style "success" --context "tf-outputs" --append
             - echo "--- :information_source: Exporting meta-data"
             - buildkite-agent meta-data set QUEUE_KEY default
             - buildkite-agent meta-data set REGISTRY_SLUG "${TF_VAR_registry_name}"
@@ -148,7 +158,7 @@ steps:
         ORG_SLUG=$(buildkite-agent meta-data get org_slug)
         BK_TOKEN=$(buildkite-agent meta-data get bk_token)
         echo "ORG_SLUG=$ORG_SLUG"
-        echo "BK_TOKEN length=${#BK_TOKEN} (should be >0)"
+        echo "BK_TOKEN length=$(echo -n "$BK_TOKEN" | wc -c) (should be >0)"
         API_ENDPOINT="https://api.buildkite.com/v2/organizations/${ORG_SLUG}/pipelines/nodejs-example"
         echo "Calling $API_ENDPOINT"
         STATUS=$(curl -s -o response.json -w "%{http_code}" -H "Authorization: Bearer ${BK_TOKEN}" "$API_ENDPOINT")
