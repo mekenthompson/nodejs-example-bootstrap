@@ -126,7 +126,7 @@ steps:
   - label: ":terraform: Apply"
     key: "apply"
     depends_on:
-      - "approve"
+      - "plan"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
