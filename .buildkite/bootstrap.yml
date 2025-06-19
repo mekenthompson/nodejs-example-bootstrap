@@ -171,14 +171,16 @@ steps:
     command:
       - |
         echo "--- :mag: Checking pipeline existence"
-        ORG_SLUG=$(buildkite-agent meta-data get org_slug || true)
-        BK_TOKEN=$(buildkite-agent meta-data get bk_token || true)
-        # Fallback: use environment variables injected by Buildkite for meta-data keys
+        # If env vars not already set, try meta-data
+        if [ -z "$ORG_SLUG" ]; then
+          ORG_SLUG=$(buildkite-agent meta-data get org_slug || true)
+        fi
+        if [ -z "$BK_TOKEN" ]; then
+          BK_TOKEN=$(buildkite-agent meta-data get bk_token || true)
+        fi
+        # Fallback: BUilDKITE_META_* env vars if present
         [ -z "$ORG_SLUG" ] && ORG_SLUG="$BUILDKITE_META_ORG_SLUG"
         [ -z "$BK_TOKEN" ] && BK_TOKEN="$BUILDKITE_META_BK_TOKEN"
-        # Fallback again if still empty
-        [ -z "$ORG_SLUG" ] && ORG_SLUG=$(buildkite-agent meta-data get org_slug || true)
-        [ -z "$BK_TOKEN" ] && BK_TOKEN=$(buildkite-agent meta-data get bk_token || true)
         echo "ORG_SLUG=$ORG_SLUG"
         echo "--- :information_source: Meta-data keys ---"
         buildkite-agent meta-data keys || true
