@@ -1,0 +1,35 @@
+steps:
+  - label: ":package: Install Dependencies"
+    key: "install"
+    commands:
+      - "cd app"
+      - "npm ci"
+    agents:
+      queue: "default"
+
+  - label: ":test_tube: Run Tests"
+    key: "test"
+    commands:
+      - "cd app"
+      - "npm test"
+    depends_on:
+      - "install"
+    agents:
+      queue: "default"
+    plugins:
+      - test-collector#v1.0.0:
+          files: "app/test-results/**/*.xml"
+          format: "junit"
+
+  - label: ":docker: Build & Push"
+    key: "docker"
+    commands:
+      - "cd app"
+      - "docker build -t $${REGISTRY_URL}/nodejs-example:$${BUILDKITE_BUILD_NUMBER} ."
+      - "docker push $${REGISTRY_URL}/nodejs-example:$${BUILDKITE_BUILD_NUMBER}"
+    depends_on:
+      - "test"
+    agents:
+      queue: "default"
+    env:
+      REGISTRY_URL: "${var.registry_name}.buildkite.com"

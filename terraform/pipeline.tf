@@ -1,12 +1,22 @@
-resource "buildkite_pipeline" "node" {
-  name       = "nodejs-example"
-  repository = "https://github.com/your-org/nodejs-example-bootstrap.git"
-  steps      = file("${path.module}/../.buildkite/pipeline.yml")
+# pipeline.tf
+resource "buildkite_pipeline" "nodejs_example" {
+  name        = "nodejs-example"
+  repository  = "https://github.com/${var.org_slug}/nodejs-example-bootstrap.git"
+  description = "Example Node.js pipeline"
+  
+  default_branch = "main"
+  cluster_id     = buildkite_cluster.nodejs.id
+  
+  # Use YAML steps to avoid interpolation issues
+  steps = file("${path.module}/pipeline-steps.yml")
+}
 
-  environment = {
-    REGISTRY_SLUG             = var.registry_name
-    QUEUE_KEY                 = buildkite_cluster_queue.default.key
-    # The analytics token will be replaced by the null_resource output once provider supports it
-    BUILDKITE_ANALYTICS_TOKEN = "TO_BE_REPLACED"
-  }
+# Set up pipeline schedule (optional)
+resource "buildkite_pipeline_schedule" "nightly" {
+  pipeline_id = buildkite_pipeline.nodejs_example.id
+  label       = "Nightly Build"
+  cronline    = "0 0 * * *"
+  message     = "Scheduled nightly build"
+  branch      = "main"
+  enabled     = true
 }

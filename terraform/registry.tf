@@ -1,24 +1,25 @@
+# registry.tf
+# Note: Package registries are not yet supported by the Terraform provider
+# This is a placeholder for when support is added
 locals {
-  mutation = <<EOF
-mutation RegistryCreate($org: ID!, $name: String!) {
-  registryCreate(input:{organizationID:$org, name:$name}) { registry { id slug } }
-}
-EOF
+  registry_setup_script = <<-EOT
+    echo "========================================"
+    echo "Package Registry Setup"
+    echo "========================================"
+    echo "Package registries must be created manually:"
+    echo ""
+    echo "1. Go to: https://buildkite.com/${var.org_slug}/packages"
+    echo "2. Click 'New Registry'"
+    echo "3. Name: ${var.registry_name}"
+    echo "4. Configure OIDC for docker push (optional)"
+    echo ""
+    echo "Registry URL will be: ${var.registry_name}.buildkite.com"
+    echo "========================================"
+  EOT
 }
 
-data "buildkite_organization" "this" {
-  slug = var.org_slug
-}
-
-resource "null_resource" "registry" {
+resource "null_resource" "registry_instructions" {
   provisioner "local-exec" {
-    command = <<BASH
-curl -s -H "Authorization: Bearer ${var.buildkite_api_token}" \
-     -X POST https://graphql.buildkite.com/v1 \
-     -d "{"query":"${local.mutation}","variables":{"org":"${data.buildkite_organization.this.id}","name":"${var.registry_name}"}}"
-BASH
-  }
-  triggers = {
-    always = timestamp()
+    command = "echo '${local.registry_setup_script}'"
   }
 }
