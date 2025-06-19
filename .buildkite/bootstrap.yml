@@ -109,6 +109,7 @@ steps:
   # 4. Terraform — Apply
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Apply"
+    key: "apply"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
@@ -159,6 +160,9 @@ steps:
   # 5. Verify nodejs-example pipeline exists
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":mag: Verify nodejs-example pipeline"
+    key: "verify"
+    depends_on:
+      - "apply"
     command:
       - |
         echo "--- :mag: Checking pipeline existence"
@@ -184,6 +188,8 @@ steps:
   # 6. Trigger the nodejs-example pipeline
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":tada: Trigger nodejs-example pipeline"
+    depends_on:
+      - "verify"
     command:
       - |
         echo "--- :rocket: Triggering nodejs-example"
