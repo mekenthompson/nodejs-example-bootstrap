@@ -42,7 +42,7 @@ steps:
           # mount your repo at /workdir; cd into /workdir/terraform
           workdir: "/workdir/terraform"
           mount_buildkite_agent: true
-          # run your commands via sh, not terraform’s ENTRYPOINT
+          entrypoint: ""   # disable terraform's default entrypoint
           shell: [ "sh", "-eo", "pipefail", "-c" ]
           env:
             TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
@@ -50,7 +50,7 @@ steps:
             TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
     artifact_paths:
-      - "artifacts/terraform.tfplan"
+      - "terraform/artifacts/terraform.tfplan"
     command:
       - |
         # Create artifacts directory
@@ -80,6 +80,7 @@ steps:
           image: hashicorp/terraform:1.5.7
           workdir: "/workdir/terraform"
           mount_buildkite_agent: true
+          entrypoint: ""   # disable terraform's default entrypoint
           shell: [ "sh", "-eo", "pipefail", "-c" ]
           env:
             TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
@@ -87,7 +88,7 @@ steps:
             TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
     artifact_paths:
-      - "artifacts/terraform-outputs.json"
+      - "terraform/artifacts/terraform-outputs.json"
     command:
       - |
         # Ensure artifacts directory exists
