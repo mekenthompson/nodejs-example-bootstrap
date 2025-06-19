@@ -33,10 +33,10 @@ All the heavy lifting is done by **Terraform**, executed from inside Buildkite.
 1. **Fork** this repo into your GitHub organisation.
 2. In Buildkite, click **“New pipeline → GitHub → nodejs-example-bootstrap”**.  
    Make sure the pipeline **YAML steps** path is `.buildkite/bootstrap.yml`.
-3. **First build starts** and shows an **Interactive Block**.  
+3. **First build starts** and shows an **Interactive Block**.
    Fill out:
-   * **Buildkite organisation slug** (e.g. `acme-corp`)
-   * **Registry name** (default `acme-internal`)
+   * **Buildkite organisation slug** (default `bootstrap-example`)
+   * **Registry name** (default `bootstrap-example`)
    * **Hosted‑agent shape** (`LINUX_AMD64_2X4` etc.)
    * **Org‑level API token** with _write_ scope
 4. Click **“Unblock”** → Terraform `plan` runs.  
