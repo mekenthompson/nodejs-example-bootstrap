@@ -63,11 +63,14 @@ steps:
         pwd
         ls -al
         ls -al terraform || true
-        
+
+        HOST_DIR="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+        echo "--- :debug: Using HOST_DIR=$HOST_DIR"
+
         # Run Terraform inside a Docker container for consistency
         # This ensures the same Terraform version is used regardless of the agent
         docker run --rm \
-          --volume "$PWD:/workdir" \
+          --volume "$HOST_DIR:/workdir" \
           --workdir /workdir \
           --env BUILDKITE_JOB_ID \
           --env BUILDKITE_BUILD_ID \
@@ -148,9 +151,12 @@ steps:
         ls -al
         ls -al terraform || true
 
+        HOST_DIR="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+        echo "--- :debug: Using HOST_DIR=$HOST_DIR"
+
         # Run Terraform apply in Docker (same setup as plan step)
         docker run --rm \
-          --volume "$PWD:/workdir" \
+          --volume "$HOST_DIR:/workdir" \
           --workdir /workdir \
           --env BUILDKITE_JOB_ID \
           --env BUILDKITE_BUILD_ID \
