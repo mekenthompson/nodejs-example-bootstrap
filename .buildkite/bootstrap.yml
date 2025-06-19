@@ -74,6 +74,21 @@ steps:
             TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
             TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
             TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
+            TF_DATA_DIR:                "/tmp/terraform_data"
+          command:
+            - cd terraform
+            - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+            - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+            - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+            - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+            - mkdir -p "$TF_DATA_DIR"
+            - mkdir -p artifacts
+            - echo "--- :terraform: Initializing Terraform"
+            - terraform init -input=false -upgrade
+            - echo "--- :terraform: Planning infra changes"
+            - terraform plan -input=false -out=artifacts/terraform.tfplan
+            - echo "--- :mag: Showing planned changes"
+            - terraform show -no-color artifacts/terraform.tfplan
     artifact_paths:
       - "terraform/artifacts/terraform.tfplan"
     command:
