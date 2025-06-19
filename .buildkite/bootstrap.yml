@@ -39,7 +39,7 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          # mount your repo at /workdir/terraform
+          # mount repo at /workdir/terraform
           workdir: "/workdir/terraform"
           mount_buildkite_agent: true
           entrypoint: ""   # disable terraform's default entrypoint
@@ -53,7 +53,6 @@ steps:
       - "terraform/artifacts/terraform.tfplan"
     command:
       - |
-        # already in /workdir/terraform
 
         # Create artifacts directory
         mkdir -p artifacts
@@ -80,6 +79,7 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
+          # mount repo at /workdir/terraform
           workdir: "/workdir/terraform"
           mount_buildkite_agent: true
           entrypoint: ""   # disable terraform's default entrypoint
@@ -93,7 +93,6 @@ steps:
       - "terraform/artifacts/terraform-outputs.json"
     command:
       - |
-        # already in /workdir/terraform
 
         # Ensure artifacts directory exists
         mkdir -p artifacts
