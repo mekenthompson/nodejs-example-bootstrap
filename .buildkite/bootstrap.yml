@@ -62,15 +62,15 @@ steps:
         # Run Terraform inside a Docker container for consistency
         # This ensures the same Terraform version is used regardless of the agent
         docker run --rm \
-          --volume "$PWD:/workdir" \                                    # Mount current directory
-          --workdir /workdir \                                          # Set working directory
-          --env BUILDKITE_JOB_ID \                                     # Pass Buildkite env vars
-          --env BUILDKITE_BUILD_ID \                                   # for metadata access
-          --env BUILDKITE_AGENT_ACCESS_TOKEN \                        # for agent commands
-          --volume $(command -v buildkite-agent):/usr/bin/buildkite-agent \  # Mount agent binary
-          --entrypoint /bin/sh \                                       # Override entrypoint to shell
-          hashicorp/terraform:1.5.7 \                                  # Terraform Docker image
-          -c 'set -euo pipefail                                        # Shell options: exit on error, undefined vars, pipe failures
+          --volume "$PWD:/workdir" \
+          --workdir /workdir \
+          --env BUILDKITE_JOB_ID \
+          --env BUILDKITE_BUILD_ID \
+          --env BUILDKITE_AGENT_ACCESS_TOKEN \
+          --volume $(command -v buildkite-agent):/usr/bin/buildkite-agent \
+          --entrypoint /bin/sh \
+          hashicorp/terraform:1.5.7 \
+          -c 'set -euo pipefail
           
           # Install required Alpine Linux packages
           # curl: needed for GraphQL API calls to create registry/analytics
