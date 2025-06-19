@@ -56,6 +56,12 @@ steps:
 
         cd terraform
 
+        # Export Terraform variables from Buildkite meta-data into environment variables
+        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+
         # Ensure artifacts directory
         mkdir -p artifacts
 
@@ -63,7 +69,7 @@ steps:
         terraform init -input=false
 
         echo "--- :terraform: Planning infra changes"
-        terraform plan -out=artifacts/terraform.tfplan
+        terraform plan -input=false -out=artifacts/terraform.tfplan
 
         echo "--- :mag: Showing planned changes"
         terraform show -no-color artifacts/terraform.tfplan
@@ -98,11 +104,17 @@ steps:
 
         cd terraform
 
+        # Export Terraform variables from Buildkite meta-data into environment variables
+        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+
         # Ensure artifacts directory exists
         mkdir -p artifacts
 
         echo "--- :terraform: Applying infra changes"
-        terraform apply -auto-approve artifacts/terraform.tfplan
+        terraform apply -input=false -auto-approve artifacts/terraform.tfplan
 
         echo "--- :floppy_disk: Saving outputs"
         terraform output -json > artifacts/terraform-outputs.json
