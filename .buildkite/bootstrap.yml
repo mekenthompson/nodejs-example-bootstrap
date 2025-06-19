@@ -1,10 +1,14 @@
 # Buildkite Bootstrap Pipeline
-# Sets up a Buildkite cluster, private registry, example pipeline, and OIDC auth.
+# This pipeline sets up a complete Buildkite infrastructure including:
+# - A Buildkite cluster with hosted agents
+# - A private package registry
+# - A nodejs-example pipeline with test analytics
+# - OIDC authentication for secure deployments
 
 steps:
-  # ┌───────────────────────────────────────────────────────────────────────────┐
-  # │ 1. Prompt for deployment details                                         │
-  # └───────────────────────────────────────────────────────────────────────────┘
+  #───────────────────────────────────────────────────────────────────────────────
+  # 1. Prompt user for bootstrap configuration
+  #───────────────────────────────────────────────────────────────────────────────
   - block: ":rocket: Deploy Buildkite infrastructure?"
     fields:
       - text: "Buildkite org slug"
@@ -31,28 +35,29 @@ steps:
       - text: "Buildkite API token"
         key: "bk_token"
         required: true
-        hint: "write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
+        hint: "Scopes: write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
 
-  # ┌───────────────────────────────────────────────────────────────────────────┐
-  # │ 2. Terraform Init & Plan                                                │
-  # └───────────────────────────────────────────────────────────────────────────┘
+  #───────────────────────────────────────────────────────────────────────────────
+  # 2. Terraform — Initialize & Plan
+  #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Initialize & Plan"
     key: "terraform-plan"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          # Run step.command under /bin/sh -eo pipefail -c
-          shell: ["/bin/sh", "-eo", "pipefail", "-c"]
           workdir: /workdir
           mount_buildkite_agent: true
-    env:
-      TF_VAR_org_slug: "${BUILDKITE_META_ORG_SLUG}"
-      TF_VAR_registry_name: "${BUILDKITE_META_REGISTRY}"
-      TF_VAR_queue_shape: "${BUILDKITE_META_SHAPE}"
-      TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
+          # Run all of this step’s `command:` through /bin/sh -eo pipefail -c
+          shell: [ "sh", "-eo", "pipefail", "-c" ]
+          env:
+            TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
+            TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
+            TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
+            TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
     artifact_paths:
       - "artifacts/terraform.tfplan"
     command: |
+      echo "--- :debug: TF_VAR_buildkite_api_token is '$TF_VAR_buildkite_api_token'"
       mkdir -p artifacts
 
       echo "--- :debug: Host working directory"
@@ -74,33 +79,34 @@ steps:
 
   - wait
 
-  # ┌───────────────────────────────────────────────────────────────────────────┐
-  # │ 3. Confirmation to Apply Changes                                         │
-  # └───────────────────────────────────────────────────────────────────────────┘
+  #───────────────────────────────────────────────────────────────────────────────
+  # 3. Manual approval before Apply
+  #───────────────────────────────────────────────────────────────────────────────
   - block: ":rocket: Apply infrastructure changes?"
     key: "apply-block"
     depends_on: "terraform-plan"
 
-  # ┌───────────────────────────────────────────────────────────────────────────┐
-  # │ 4. Terraform Apply                                                      │
-  # └───────────────────────────────────────────────────────────────────────────┘
+  #───────────────────────────────────────────────────────────────────────────────
+  # 4. Terraform — Apply
+  #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Apply"
     key: "terraform-apply"
     depends_on: "apply-block"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          shell: ["/bin/sh", "-eo", "pipefail", "-c"]
           workdir: /workdir
           mount_buildkite_agent: true
-    env:
-      TF_VAR_org_slug: "${BUILDKITE_META_ORG_SLUG}"
-      TF_VAR_registry_name: "${BUILDKITE_META_REGISTRY}"
-      TF_VAR_queue_shape: "${BUILDKITE_META_SHAPE}"
-      TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
+          shell: [ "sh", "-eo", "pipefail", "-c" ]
+          env:
+            TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
+            TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
+            TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
+            TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
     artifact_paths:
       - "artifacts/terraform-outputs.json"
     command: |
+      echo "--- :debug: TF_VAR_buildkite_api_token is '$TF_VAR_buildkite_api_token'"
       buildkite-agent artifact download "artifacts/terraform.tfplan" .
 
       echo "--- :debug: Host working directory"
@@ -118,15 +124,14 @@ steps:
       terraform -chdir=./terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
 
       echo "--- :white_check_mark: Infrastructure deployed successfully!"
-
       echo "--- :floppy_disk: Saving outputs"
       terraform -chdir=./terraform output -json > /workdir/artifacts/terraform-outputs.json
 
   - wait
 
-  # ┌───────────────────────────────────────────────────────────────────────────┐
-  # │ 5. Trigger nodejs-example Pipeline                                       │
-  # └───────────────────────────────────────────────────────────────────────────┘
+  #───────────────────────────────────────────────────────────────────────────────
+  # 5. Trigger the nodejs-example pipeline
+  #───────────────────────────────────────────────────────────────────────────────
   - label: ":tada: Trigger nodejs-example pipeline"
     key: "trigger-pipeline"
     depends_on: "terraform-apply"
@@ -148,9 +153,9 @@ steps:
   - wait: ~
     continue_on_failure: true
 
-  # ┌───────────────────────────────────────────────────────────────────────────┐
-  # │ 6. Cleanup                                                               │
-  # └───────────────────────────────────────────────────────────────────────────┘
+  #───────────────────────────────────────────────────────────────────────────────
+  # 6. Cleanup
+  #───────────────────────────────────────────────────────────────────────────────
   - label: ":broom: Cleanup"
     key: "cleanup"
     command: |
