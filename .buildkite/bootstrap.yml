@@ -39,8 +39,8 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          # mount repo at /workdir/terraform
-          workdir: "/workdir/terraform"
+          # mount repo at /workdir (repo root)
+          workdir: "/workdir"
           mount_buildkite_agent: true
           entrypoint: ""   # disable terraform's default entrypoint
           shell: [ "sh", "-eo", "pipefail", "-c" ]
@@ -54,7 +54,9 @@ steps:
     command:
       - |
 
-        # Create artifacts directory
+        cd terraform
+
+        # Ensure artifacts directory
         mkdir -p artifacts
 
         echo "--- :terraform: Initializing Terraform"
@@ -79,8 +81,8 @@ steps:
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
-          # mount repo at /workdir/terraform
-          workdir: "/workdir/terraform"
+          # mount repo at /workdir (repo root)
+          workdir: "/workdir"
           mount_buildkite_agent: true
           entrypoint: ""   # disable terraform's default entrypoint
           shell: [ "sh", "-eo", "pipefail", "-c" ]
@@ -93,6 +95,8 @@ steps:
       - "terraform/artifacts/terraform-outputs.json"
     command:
       - |
+
+        cd terraform
 
         # Ensure artifacts directory exists
         mkdir -p artifacts
