@@ -98,17 +98,16 @@ steps:
           
           # Initialize Terraform - downloads providers and sets up backend
           echo "--- :terraform: Initializing Terraform"
-          cd terraform
-          terraform init -input=false
+          terraform -chdir=/workdir/terraform init -input=false
           
           # Create execution plan and save it to a file
           # This plan will be applied in the next step if approved
           echo "--- :terraform: Planning infrastructure changes"
-          terraform plan -input=false -out=../artifacts/terraform.tfplan
+          terraform -chdir=/workdir/terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
           
           # Display the plan in human-readable format for review
           echo "--- :mag: Showing planned changes"
-          terraform show -no-color ../artifacts/terraform.tfplan'
+          terraform -chdir=/workdir/terraform show -no-color /workdir/artifacts/terraform.tfplan'
     
     # Upload the plan file as a build artifact
     # This allows the apply step to download and use the exact same plan
@@ -172,16 +171,15 @@ steps:
           
           # Apply the infrastructure changes
           echo "--- :terraform: Applying infrastructure changes"
-          cd terraform
-          terraform init -input=false # Re-initialize to ensure consistency
-          terraform apply -input=false -auto-approve ../artifacts/terraform.tfplan
+          terraform -chdir=/workdir/terraform init -input=false # Re-initialize to ensure consistency
+          terraform -chdir=/workdir/terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
           
           echo "--- :white_check_mark: Infrastructure deployed successfully!"
           
           # Save Terraform outputs for reference
           # This might include cluster IDs, registry URLs, etc.
           echo "--- :floppy_disk: Saving outputs"
-          terraform output -json > ../artifacts/terraform-outputs.json'
+          terraform -chdir=/workdir/terraform output -json > /workdir/artifacts/terraform-outputs.json'
     
     # Upload outputs as artifacts for debugging/reference
     artifact_paths:
