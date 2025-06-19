@@ -37,20 +37,23 @@ steps:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
           workdir: /workdir
+          entrypoint: ["/bin/sh", "-c"]
     artifact_paths:
       - "artifacts/terraform.tfplan"
     commands:
-      - mkdir -p artifacts
-      - echo "--- Host checkout path: $BUILDKITE_BUILD_CHECKOUT_PATH"
-      - ls -al /workdir
-      - apk add --no-cache curl jq
-      - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      - terraform -chdir=terraform init -input=false
-      - terraform -chdir=terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
-      - terraform -chdir=terraform show -no-color /workdir/artifacts/terraform.tfplan
+      - |
+        set -euo pipefail
+        mkdir -p artifacts
+        echo "--- Host checkout path: $BUILDKITE_BUILD_CHECKOUT_PATH"
+        ls -al /workdir
+        apk add --no-cache curl jq
+        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+        terraform -chdir=terraform init -input=false
+        terraform -chdir=terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
+        terraform -chdir=terraform show -no-color /workdir/artifacts/terraform.tfplan
 
   - wait
 
@@ -67,21 +70,24 @@ steps:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
           workdir: /workdir
+          entrypoint: ["/bin/sh", "-c"]
     artifact_paths:
       - "artifacts/terraform-outputs.json"
     commands:
-      - buildkite-agent artifact download "artifacts/terraform.tfplan" .
-      - mkdir -p artifacts
-      - echo "--- Host checkout path: $BUILDKITE_BUILD_CHECKOUT_PATH"
-      - ls -al /workdir
-      - apk add --no-cache curl jq
-      - export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
-      - export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
-      - export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
-      - export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
-      - terraform -chdir=terraform init -input=false
-      - terraform -chdir=terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
-      - terraform -chdir=terraform output -json > /workdir/artifacts/terraform-outputs.json
+      - |
+        set -euo pipefail
+        buildkite-agent artifact download "artifacts/terraform.tfplan" .
+        mkdir -p artifacts
+        echo "--- Host checkout path: $BUILDKITE_BUILD_CHECKOUT_PATH"
+        ls -al /workdir
+        apk add --no-cache curl jq
+        export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug)"
+        export TF_VAR_registry_name="$(buildkite-agent meta-data get registry)"
+        export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape)"
+        export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+        terraform -chdir=terraform init -input=false
+        terraform -chdir=terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
+        terraform -chdir=terraform output -json > /workdir/artifacts/terraform-outputs.json
 
   - wait
 
@@ -90,8 +96,8 @@ steps:
     key: "trigger-pipeline"
     depends_on: "terraform-apply"
     commands:
-      - ORG=$(buildkite-agent meta-data get org_slug)
       - |
+        ORG=$(buildkite-agent meta-data get org_slug)
         cat <<YAML | buildkite-agent pipeline upload
         steps:
           - trigger: "nodejs-example"
@@ -101,7 +107,7 @@ steps:
               message: "First build after bootstrap :rocket:"
               branch: "main"
         YAML
-      - echo "Visit https://buildkite.com/${ORG}/nodejs-example"
+        echo "Visit https://buildkite.com/${ORG}/nodejs-example"
 
   - wait: ~
     continue_on_failure: true
