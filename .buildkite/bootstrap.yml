@@ -97,14 +97,12 @@ steps:
             - terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
             - |
                 echo "--- :rocket: Uploading approval block"
-                cat > /tmp/approve.yml <<YML
-steps:
-  - block: ":white_check_mark: Apply infrastructure changes? ($PLAN_SUMMARY_LINE)"
-    prompt: "Terraform summary: $PLAN_SUMMARY_LINE"
-    key: "approve"
-YML
-                buildkite-agent pipeline upload /tmp/approve.yml
-                terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
+                buildkite-agent pipeline upload <<YML
+                steps:
+                  - block: ":white_check_mark: Apply infrastructure changes? (${PLAN_SUMMARY_LINE})"
+                    prompt: "Terraform summary: ${PLAN_SUMMARY_LINE}"
+                    key: "approve"
+                YML
     artifact_paths:
       - "terraform/artifacts/terraform.tfplan"
 
