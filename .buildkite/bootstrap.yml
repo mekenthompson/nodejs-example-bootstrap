@@ -66,7 +66,7 @@ steps:
           --env BUILDKITE_JOB_ID \                                     # Pass Buildkite env vars
           --env BUILDKITE_BUILD_ID \                                   # for metadata access
           --env BUILDKITE_AGENT_ACCESS_TOKEN \                        # for agent commands
-          --volume /buildkite/agent/bin/buildkite-agent:/usr/bin/buildkite-agent \  # Mount agent binary
+          --volume $(command -v buildkite-agent):/usr/bin/buildkite-agent \  # Mount agent binary
           --entrypoint /bin/sh \                                       # Override entrypoint to shell
           hashicorp/terraform:1.5.7 \                                  # Terraform Docker image
           -c 'set -euo pipefail                                        # Shell options: exit on error, undefined vars, pipe failures
@@ -133,7 +133,7 @@ steps:
           --env BUILDKITE_JOB_ID \
           --env BUILDKITE_BUILD_ID \
           --env BUILDKITE_AGENT_ACCESS_TOKEN \
-          --volume /buildkite/agent/bin/buildkite-agent:/usr/bin/buildkite-agent \
+          --volume $(command -v buildkite-agent):/usr/bin/buildkite-agent \
           --entrypoint /bin/sh \
           hashicorp/terraform:1.5.7 \
           -c 'set -euo pipefail
