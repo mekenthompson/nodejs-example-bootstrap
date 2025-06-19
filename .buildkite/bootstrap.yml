@@ -53,14 +53,17 @@ steps:
       - "artifacts/terraform.tfplan"
     command:
       - |
+        # Create artifacts directory
+        mkdir -p artifacts
+
         echo "--- :terraform: Initializing Terraform"
         terraform init -input=false
 
         echo "--- :terraform: Planning infra changes"
-        terraform plan -out=/workdir/artifacts/terraform.tfplan
+        terraform plan -out=artifacts/terraform.tfplan
 
         echo "--- :mag: Showing planned changes"
-        terraform show -no-color /workdir/artifacts/terraform.tfplan
+        terraform show -no-color artifacts/terraform.tfplan
 
   #───────────────────────────────────────────────────────────────────────────────
   # 3. Pause for manual approval
@@ -87,11 +90,18 @@ steps:
       - "artifacts/terraform-outputs.json"
     command:
       - |
+        # Ensure artifacts directory exists
+        mkdir -p artifacts
+
         echo "--- :terraform: Applying infra changes"
-        terraform apply -auto-approve /workdir/artifacts/terraform.tfplan
+        terraform apply -auto-approve artifacts/terraform.tfplan
 
         echo "--- :floppy_disk: Saving outputs"
-        terraform output -json > /workdir/artifacts/terraform-outputs.json
+        terraform output -json > artifacts/terraform-outputs.json
+
+        echo "--- :information_source: Exporting meta-data"
+        buildkite-agent meta-data set QUEUE_KEY default
+        buildkite-agent meta-data set REGISTRY_SLUG "${TF_VAR_registry_name}"
 
   #───────────────────────────────────────────────────────────────────────────────
   # 5. Trigger the nodejs-example pipeline
@@ -101,12 +111,17 @@ steps:
       - |
         echo "--- :rocket: Triggering nodejs-example"
         ORG_SLUG=$(buildkite-agent meta-data get org_slug)
-        buildkite-agent pipeline upload << 'PIPELINE'
+        REGISTRY=$(buildkite-agent meta-data get REGISTRY_SLUG)
+
+        buildkite-agent pipeline upload <<PIPELINE
         steps:
           - trigger: "nodejs-example"
             async: true
             build:
               message: "First build after bootstrap :rocket:"
+              env:
+                QUEUE_KEY: "default"
+                REGISTRY_SLUG: "$REGISTRY"
         PIPELINE
 
   #───────────────────────────────────────────────────────────────────────────────

@@ -3,13 +3,15 @@ env:
 
 steps:
   - label: ":docker: Build"
+    key: "build"
     commands:
       - docker build -t node-example:${BUILDKITE_COMMIT} app/
     agents:
       queue: "${QUEUE_KEY}"
 
   - label: ":jest: Test (split)"
-    depends_on: "Build"
+    key: "test"
+    depends_on: "build"
     commands:
       - cd app
       - yarn install --frozen-lockfile
@@ -22,7 +24,7 @@ steps:
       queue: "${QUEUE_KEY}"
 
   - label: ":package: Push"
-    depends_on: "Test (split)"
+    depends_on: "test"
     commands:
       - buildkite-agent oidc exec --         docker push buildkite://${REGISTRY_SLUG}/node-example:${BUILDKITE_COMMIT}
     agents:
