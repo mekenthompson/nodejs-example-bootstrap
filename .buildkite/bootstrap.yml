@@ -58,6 +58,11 @@ steps:
         # Create a directory to store artifacts that will be passed between steps
         # This ensures the terraform plan file can be uploaded and downloaded
         mkdir -p artifacts
+
+        echo "--- :debug: Host working directory"
+        pwd
+        ls -al
+        ls -al terraform || true
         
         # Run Terraform inside a Docker container for consistency
         # This ensures the same Terraform version is used regardless of the agent
@@ -71,6 +76,13 @@ steps:
           --entrypoint /bin/sh \
           hashicorp/terraform:1.5.7 \
           -c 'set -euo pipefail
+
+          set -x
+
+          echo "--- :debug: Inside container"
+          pwd
+          ls -al
+          ls -al terraform || true
           
           # Install required Alpine Linux packages
           # curl: needed for GraphQL API calls to create registry/analytics
@@ -84,7 +96,9 @@ steps:
           export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug || echo bootstrap-example)"
           export TF_VAR_registry_name="$(buildkite-agent meta-data get registry || echo bootstrap-example)"
           export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape || echo LINUX_AMD64_2X4)"
+          set +x
           export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+          set -x
           
           # Initialize Terraform - downloads providers and sets up backend
           echo "--- :terraform: Initializing Terraform"
@@ -93,11 +107,12 @@ steps:
           # Create execution plan and save it to a file
           # This plan will be applied in the next step if approved
           echo "--- :terraform: Planning infrastructure changes"
-          terraform -chdir=/workdir/terraform plan -input=false -out=../artifacts/terraform.tfplan
+
+          terraform -chdir=/workdir/terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
           
           # Display the plan in human-readable format for review
           echo "--- :mag: Showing planned changes"
-          terraform show -no-color ../artifacts/terraform.tfplan'
+          terraform -chdir=/workdir/terraform show -no-color /workdir/artifacts/terraform.tfplan'
     
     # Upload the plan file as a build artifact
     # This allows the apply step to download and use the exact same plan
@@ -125,7 +140,12 @@ steps:
         # Download the terraform plan from the previous step
         # This ensures we apply exactly what was shown in the plan
         buildkite-agent artifact download "artifacts/terraform.tfplan" .
-        
+
+        echo "--- :debug: Host working directory"
+        pwd
+        ls -al
+        ls -al terraform || true
+
         # Run Terraform apply in Docker (same setup as plan step)
         docker run --rm \
           --volume "$PWD:/workdir" \
@@ -137,6 +157,13 @@ steps:
           --entrypoint /bin/sh \
           hashicorp/terraform:1.5.7 \
           -c 'set -euo pipefail
+
+          set -x
+
+          echo "--- :debug: Inside container"
+          pwd
+          ls -al
+          ls -al terraform || true
           
           # Install dependencies (same as plan step)
           echo "--- :package: Installing dependencies"
@@ -147,19 +174,21 @@ steps:
           export TF_VAR_org_slug="$(buildkite-agent meta-data get org_slug || echo bootstrap-example)"
           export TF_VAR_registry_name="$(buildkite-agent meta-data get registry || echo bootstrap-example)"
           export TF_VAR_queue_shape="$(buildkite-agent meta-data get shape || echo LINUX_AMD64_2X4)"
+          set +x
           export TF_VAR_buildkite_api_token="$(buildkite-agent meta-data get bk_token)"
+          set -x
           
           # Apply the infrastructure changes
           echo "--- :terraform: Applying infrastructure changes"
           terraform -chdir=/workdir/terraform init -input=false # Re-initialize to ensure consistency
-          terraform -chdir=/workdir/terraform apply -input=false -auto-approve ../artifacts/terraform.tfplan
+          terraform -chdir=/workdir/terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
           
           echo "--- :white_check_mark: Infrastructure deployed successfully!"
           
           # Save Terraform outputs for reference
           # This might include cluster IDs, registry URLs, etc.
           echo "--- :floppy_disk: Saving outputs"
-          terraform output -json > ../artifacts/terraform-outputs.json'
+          terraform -chdir=/workdir/terraform output -json > /workdir/artifacts/terraform-outputs.json'
     
     # Upload outputs as artifacts for debugging/reference
     artifact_paths:
