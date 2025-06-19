@@ -99,6 +99,9 @@ steps:
             - echo "--- :memo: Capturing plan summary"
             - PLAN_SUMMARY_LINE=$(terraform show -no-color artifacts/terraform.tfplan | grep -E '^Plan:' | head -1)
             - echo "Plan summary: $PLAN_SUMMARY_LINE"
+            - echo "--- :information_source: Caching user inputs as meta-data"
+            - buildkite-agent meta-data set org_slug "$ORG_SLUG"
+            - buildkite-agent meta-data set bk_token "$BK_TOKEN"
             - buildkite-agent meta-data set PLAN_SUMMARY "$PLAN_SUMMARY_LINE"
             - echo "--- :memo: Annotating plan summary (first 100 lines)"
             - terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
