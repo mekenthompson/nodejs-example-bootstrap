@@ -137,7 +137,24 @@ steps:
       - "terraform/artifacts/terraform-outputs.json"
 
   #───────────────────────────────────────────────────────────────────────────────
-  # 5. Trigger the nodejs-example pipeline
+  # 5. Verify nodejs-example pipeline exists
+  #───────────────────────────────────────────────────────────────────────────────
+  - label: ":mag: Verify nodejs-example pipeline"
+    command:
+      - |
+        echo "--- :mag: Checking pipeline existence"
+        ORG_SLUG=$(buildkite-agent meta-data get org_slug)
+        BK_TOKEN=$(buildkite-agent meta-data get bk_token)
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${BK_TOKEN}" "https://api.buildkite.com/v2/organizations/${ORG_SLUG}/pipelines/nodejs-example")
+        if [ "$STATUS" != "200" ]; then
+          echo "Pipeline nodejs-example not found (HTTP $STATUS). Terraform may have failed."
+          buildkite-agent annotate --style "error" "nodejs-example pipeline not found. Check Terraform apply logs or API token scopes." --context "pipeline-check"
+          exit 1
+        fi
+        echo "Pipeline exists."
+
+  #───────────────────────────────────────────────────────────────────────────────
+  # 6. Trigger the nodejs-example pipeline
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":tada: Trigger nodejs-example pipeline"
     command:
