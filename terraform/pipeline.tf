@@ -5,7 +5,6 @@ resource "buildkite_pipeline" "nodejs_example" {
   description = "Example Node.js pipeline"
   
   default_branch = "main"
-  cluster_id     = buildkite_cluster.nodejs.id
   
   # Use YAML steps to avoid interpolation issues
   steps = file("${path.module}/pipeline-steps.yml")

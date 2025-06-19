@@ -89,6 +89,8 @@ steps:
             - terraform plan -input=false -out=artifacts/terraform.tfplan
             - echo "--- :mag: Showing planned changes"
             - terraform show -no-color artifacts/terraform.tfplan
+            - echo "--- :memo: Annotating plan summary (first 100 lines)"
+            - terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
     artifact_paths:
       - "terraform/artifacts/terraform.tfplan"
 
@@ -145,13 +147,18 @@ steps:
         echo "--- :mag: Checking pipeline existence"
         ORG_SLUG=$(buildkite-agent meta-data get org_slug)
         BK_TOKEN=$(buildkite-agent meta-data get bk_token)
-        STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${BK_TOKEN}" "https://api.buildkite.com/v2/organizations/${ORG_SLUG}/pipelines/nodejs-example")
+        echo "ORG_SLUG=$ORG_SLUG"
+        echo "BK_TOKEN length=${#BK_TOKEN} (should be >0)"
+        API_ENDPOINT="https://api.buildkite.com/v2/organizations/${ORG_SLUG}/pipelines/nodejs-example"
+        echo "Calling $API_ENDPOINT"
+        STATUS=$(curl -s -o response.json -w "%{http_code}" -H "Authorization: Bearer ${BK_TOKEN}" "$API_ENDPOINT")
+        cat response.json | head -20 || true
         if [ "$STATUS" != "200" ]; then
-          echo "Pipeline nodejs-example not found (HTTP $STATUS). Terraform may have failed."
-          buildkite-agent annotate --style "error" "nodejs-example pipeline not found. Check Terraform apply logs or API token scopes." --context "pipeline-check"
+          echo "Pipeline nodejs-example not found (HTTP $STATUS). Terraform may have failed or token lacks scopes."
+          buildkite-agent annotate --style "error" "nodejs-example pipeline not found (HTTP $STATUS). See response snippet above. Ensure Terraform Apply succeeded and API token has write_pipelines & read_pipelines scopes." --context "pipeline-check"
           exit 1
         fi
-        echo "Pipeline exists."
+        echo "Pipeline exists (HTTP $STATUS)."
 
   #───────────────────────────────────────────────────────────────────────────────
   # 6. Trigger the nodejs-example pipeline
