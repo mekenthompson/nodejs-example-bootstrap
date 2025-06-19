@@ -1,175 +1,73 @@
-# Buildkite Bootstrap Pipeline
-# This pipeline sets up a complete Buildkite infrastructure including:
-# - A Buildkite cluster with hosted agents
-# - A private package registry
-# - A nodejs-example pipeline with test analytics
-# - OIDC authentication for secure deployments
+# .buildkite/bootstrap.yml
 
 steps:
-  #───────────────────────────────────────────────────────────────────────────────
-  # 1. Prompt user for bootstrap configuration
-  #───────────────────────────────────────────────────────────────────────────────
-  - block: ":rocket: Deploy Buildkite infrastructure?"
+  # 1) Collect org slug, registry name, agent shape & API token from the user
+  - block: ":gear: Configure Buildkite infra"
+    prompt: "Enter your Buildkite org slug, registry name, agent shape and API token, then click Unblock"
     fields:
-      - text: "Buildkite org slug"
-        key: "org_slug"
-        required: true
-        default: "bootstrap-example"
-        hint: "Find it in your URL: buildkite.com/<org-slug>"
-      - text: "Registry name"
-        key: "registry"
-        required: true
-        default: "bootstrap-example"
-        hint: "Must be unique"
-      - select: "Hosted agent shape"
-        key: "shape"
-        required: true
-        default: "LINUX_AMD64_2X4"
-        options:
-          - label: "Linux AMD64 2x4"
-            value: "LINUX_AMD64_2X4"
-          - label: "Linux AMD64 4x16"
-            value: "LINUX_AMD64_4X16"
-          - label: "macOS M1 4x12"
-            value: "MACOS_M1_4X12"
-      - text: "Buildkite API token"
-        key: "bk_token"
-        required: true
-        hint: "Scopes: write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
+      - text:
+          key: org_slug
+          label: "Buildkite org slug"
+          required: true
+      - text:
+          key: registry
+          label: "Registry name"
+          default: "bootstrap-example"
+      - select:
+          key: shape
+          label: "Hosted agent shape"
+          required: true
+          options:
+            - label: "2 vCPU / 4 GB Linux (LINUX_AMD64_2X4)"
+              value: "LINUX_AMD64_2X4"
+            - label: "4 vCPU / 8 GB Linux (LINUX_AMD64_4X8)"
+              value: "LINUX_AMD64_4X8"
+            - label: "Apple M2 Pro 32 GB macOS (MAC_M2PRO_32GB)"
+              value: "MAC_M2PRO_32GB"
+      - password:
+          key: bk_token
+          label: "Buildkite API token (write scope)"
+          required: true
 
-  #───────────────────────────────────────────────────────────────────────────────
-  # 2. Terraform — Initialize & Plan
-  #───────────────────────────────────────────────────────────────────────────────
-  - label: ":terraform: Initialize & Plan"
-    key: "terraform-plan"
+  # 2) Terraform plan in Docker
+  - label: ":terraform: plan"
+    agents:
+      queue: "default"
     plugins:
-      - docker#v3.8.0:
+      - docker#v3.7.0:
           image: hashicorp/terraform:1.5.7
-          workdir: /workdir
-          mount_buildkite_agent: true
-          # Run all of this step’s `command:` through /bin/sh -eo pipefail -c
-          shell: [ "sh", "-eo", "pipefail", "-c" ]
-          env:
-            TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
-            TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
-            TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
-            TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
-    artifact_paths:
-      - "artifacts/terraform.tfplan"
-    command: |
-      echo "--- :debug: TF_VAR_buildkite_api_token is '$TF_VAR_buildkite_api_token'"
-      mkdir -p artifacts
+          # override default ENTRYPOINT (which is `terraform`) so we can use shell
+          entrypoint: ["/bin/sh", "-c"]
+          always-pull: true              # always grab the latest image
+          workdir: "terraform"           # cd into your ./terraform folder
+          environment:                   # pass block fields as TF_VARs
+            TF_VAR_org_slug:           "$ORG_SLUG"
+            TF_VAR_registry_name:      "$REGISTRY"
+            TF_VAR_queue_shape:        "$SHAPE"
+            TF_VAR_buildkite_api_token: "$BK_TOKEN"
+    command:
+      - |
+        terraform init -input=false
+        terraform plan -out=tf.plan
 
-      echo "--- :debug: Host working directory"
-      pwd
-      ls -al
-      ls -al terraform || true
-
-      echo "--- :package: Installing dependencies"
-      apk add --no-cache curl jq
-
-      echo "--- :terraform: Initializing Terraform"
-      terraform -chdir=./terraform init -input=false
-
-      echo "--- :terraform: Planning infrastructure changes"
-      terraform -chdir=./terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
-
-      echo "--- :mag: Showing planned changes"
-      terraform -chdir=./terraform show -no-color /workdir/artifacts/terraform.tfplan
-
+  # 3) Pause for manual approval
   - wait
+  - block: ":white_check_mark: Apply the plan?"
 
-  #───────────────────────────────────────────────────────────────────────────────
-  # 3. Manual approval before Apply
-  #───────────────────────────────────────────────────────────────────────────────
-  - block: ":rocket: Apply infrastructure changes?"
-    key: "apply-block"
-    depends_on: "terraform-plan"
-
-  #───────────────────────────────────────────────────────────────────────────────
-  # 4. Terraform — Apply
-  #───────────────────────────────────────────────────────────────────────────────
-  - label: ":terraform: Apply"
-    key: "terraform-apply"
-    depends_on: "apply-block"
+  # 4) Terraform apply in Docker
+  - label: ":rocket: terraform apply"
+    agents:
+      queue: "default"
     plugins:
-      - docker#v3.8.0:
+      - docker#v3.7.0:
           image: hashicorp/terraform:1.5.7
-          workdir: /workdir
-          mount_buildkite_agent: true
-          shell: [ "sh", "-eo", "pipefail", "-c" ]
-          env:
-            TF_VAR_org_slug:            "${BUILDKITE_META_ORG_SLUG}"
-            TF_VAR_registry_name:       "${BUILDKITE_META_REGISTRY}"
-            TF_VAR_queue_shape:         "${BUILDKITE_META_SHAPE}"
-            TF_VAR_buildkite_api_token: "${BUILDKITE_META_BK_TOKEN}"
-    artifact_paths:
-      - "artifacts/terraform-outputs.json"
-    command: |
-      echo "--- :debug: TF_VAR_buildkite_api_token is '$TF_VAR_buildkite_api_token'"
-      buildkite-agent artifact download "artifacts/terraform.tfplan" .
-
-      echo "--- :debug: Host working directory"
-      pwd
-      ls -al
-      ls -al terraform || true
-
-      echo "--- :package: Installing dependencies"
-      apk add --no-cache curl jq
-
-      echo "--- :terraform: Initializing Terraform"
-      terraform -chdir=./terraform init -input=false
-
-      echo "--- :terraform: Applying infrastructure changes"
-      terraform -chdir=./terraform apply -input=false -auto-approve /workdir/artifacts/terraform.tfplan
-
-      echo "--- :white_check_mark: Infrastructure deployed successfully!"
-      echo "--- :floppy_disk: Saving outputs"
-      terraform -chdir=./terraform output -json > /workdir/artifacts/terraform-outputs.json
-
-  - wait
-
-  #───────────────────────────────────────────────────────────────────────────────
-  # 5. Trigger the nodejs-example pipeline
-  #───────────────────────────────────────────────────────────────────────────────
-  - label: ":tada: Trigger nodejs-example pipeline"
-    key: "trigger-pipeline"
-    depends_on: "terraform-apply"
-    command: |
-      echo "--- :rocket: Triggering the newly created pipeline"
-      ORG_SLUG=$(buildkite-agent meta-data get org_slug)
-      cat <<YAML | buildkite-agent pipeline upload
-      steps:
-        - trigger: "nodejs-example"
-          label: ":nodejs: First build of nodejs-example"
-          async: true
-          build:
-            message: "First build after bootstrap :rocket:"
-            branch: "main"
-      YAML
-      echo "--- :link: Pipeline triggered successfully!"
-      echo "Visit: https://buildkite.com/${ORG_SLUG}/nodejs-example"
-
-  - wait: ~
-    continue_on_failure: true
-
-  #───────────────────────────────────────────────────────────────────────────────
-  # 6. Cleanup
-  #───────────────────────────────────────────────────────────────────────────────
-  - label: ":broom: Cleanup"
-    key: "cleanup"
-    command: |
-      echo "--- :broom: Cleaning up artifacts"
-      rm -rf artifacts/
-      echo "--- :white_check_mark: Bootstrap complete!"
-      echo ""
-      echo "Resources created:"
-      echo "- Buildkite cluster with hosted agents"
-      echo "- Private package registry"
-      echo "- nodejs-example pipeline"
-      echo "- Test analytics configuration"
-      echo ""
-      echo "Next steps:"
-      echo "1. Check the nodejs-example pipeline build"
-      echo "2. Review the created resources in your Buildkite settings"
-      echo "3. Start pushing code to trigger builds!"
+          entrypoint: ["/bin/sh", "-c"]
+          always-pull: true
+          workdir: "terraform"
+          environment:
+            TF_VAR_org_slug:           "$ORG_SLUG"
+            TF_VAR_registry_name:      "$REGISTRY"
+            TF_VAR_queue_shape:        "$SHAPE"
+            TF_VAR_buildkite_api_token: "$BK_TOKEN"
+    command:
+      - terraform apply -auto-approve tf.plan
