@@ -5,6 +5,7 @@ steps:
   # 1. Prompt for infra config
   #───────────────────────────────────────────────────────────────────────────────
   - block: ":rocket: Deploy Buildkite infrastructure"
+    key: "config"
     fields:
       - text: "Buildkite org slug"                     # prompt text
         key: org_slug                                  # metadata key
@@ -36,6 +37,9 @@ steps:
   # 2. Debug - Check permissions and mounts
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":bug: Debug - Check permissions and mounts"
+    key: "debug"
+    depends_on:
+      - "config"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
@@ -61,6 +65,9 @@ steps:
   # 2. Terraform — Init & Plan
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Initialize & Plan"
+    key: "plan"
+    depends_on:
+      - "debug"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
@@ -100,6 +107,7 @@ steps:
                 buildkite-agent pipeline upload <<YML
                 steps:
                   - block: ":white_check_mark: Apply infrastructure changes? (${PLAN_SUMMARY_LINE})"
+                    depends_on: "plan"
                     prompt: "Terraform summary: ${PLAN_SUMMARY_LINE}"
                     key: "approve"
                 YML
