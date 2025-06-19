@@ -1,4 +1,6 @@
+# ===============================================================================
 # Buildkite Bootstrap Pipeline
+# ===============================================================================
 # This pipeline sets up a complete Buildkite infrastructure including:
 # - A Buildkite cluster with hosted agents
 # - A private package registry
@@ -6,6 +8,10 @@
 # - OIDC authentication for secure deployments
 
 steps:
+
+  # -----------------------------------------------------------------------------
+  # Input Step: Prompt for necessary bootstrap parameters
+  # -----------------------------------------------------------------------------
   - block: ":rocket: Deploy Buildkite infrastructure?"
     fields:
       - text: "Buildkite org slug"
@@ -34,6 +40,9 @@ steps:
         required: true
         hint: "write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
 
+  # -----------------------------------------------------------------------------
+  # Command Step: Terraform Initialize & Plan
+  # -----------------------------------------------------------------------------
   - label: ":terraform: Initialize & Plan"
     key: "terraform-plan"
     plugins:
@@ -73,12 +82,21 @@ steps:
       echo "--- :mag: Showing planned changes"
       terraform -chdir=./terraform show -no-color /workdir/artifacts/terraform.tfplan
 
+  # -----------------------------------------------------------------------------
+  # Wait Step: Pause until the plan completes
+  # -----------------------------------------------------------------------------
   - wait
 
+  # -----------------------------------------------------------------------------
+  # Block Step: Confirm before applying infrastructure changes
+  # -----------------------------------------------------------------------------
   - block: ":rocket: Apply infrastructure changes?"
     key: "apply-block"
     depends_on: "terraform-plan"
 
+  # -----------------------------------------------------------------------------
+  # Command Step: Terraform Apply & Save Outputs
+  # -----------------------------------------------------------------------------
   - label: ":terraform: Apply"
     key: "terraform-apply"
     depends_on: "apply-block"
@@ -121,8 +139,14 @@ steps:
       echo "--- :floppy_disk: Saving outputs"
       terraform -chdir=./terraform output -json > /workdir/artifacts/terraform-outputs.json
 
+  # -----------------------------------------------------------------------------
+  # Wait Step: Pause until apply finishes
+  # -----------------------------------------------------------------------------
   - wait
 
+  # -----------------------------------------------------------------------------
+  # Trigger Step: Kick off nodejs‐example pipeline
+  # -----------------------------------------------------------------------------
   - label: ":tada: Trigger nodejs-example pipeline"
     key: "trigger-pipeline"
     depends_on: "terraform-apply"
@@ -141,9 +165,15 @@ steps:
       echo "--- :link: Pipeline triggered successfully!"
       echo "Visit: https://buildkite.com/${ORG_SLUG}/nodejs-example"
 
+  # -----------------------------------------------------------------------------
+  # Wait Step: Allow cleanup even if trigger fails
+  # -----------------------------------------------------------------------------
   - wait: ~
     continue_on_failure: true
 
+  # -----------------------------------------------------------------------------
+  # Cleanup Step: Clean up artifacts and finish up
+  # -----------------------------------------------------------------------------
   - label: ":broom: Cleanup"
     key: "cleanup"
     command: |
