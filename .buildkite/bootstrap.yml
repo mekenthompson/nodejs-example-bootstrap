@@ -95,21 +95,31 @@ steps:
             - buildkite-agent meta-data set PLAN_SUMMARY "$PLAN_SUMMARY_LINE"
             - echo "--- :memo: Annotating plan summary (first 100 lines)"
             - terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
+            - echo "--- :rocket: Uploading approval block"
+            - cat > /tmp/approve.yml <<YML
+steps:
+  - block: ":white_check_mark: Apply infrastructure changes? (\"$PLAN_SUMMARY_LINE\")"
+    prompt: "Terraform summary: $PLAN_SUMMARY_LINE"
+    key: "approve"
+YML
+            - buildkite-agent pipeline upload /tmp/approve.yml
+            - terraform show -no-color artifacts/terraform.tfplan | head -100 | buildkite-agent annotate --style "info" --context "tf-summary"
     artifact_paths:
       - "terraform/artifacts/terraform.tfplan"
 
   #───────────────────────────────────────────────────────────────────────────────
-  # 3. Pause for manual approval
+  # 3. Upload dynamic manual approval block with plan summary
   #───────────────────────────────────────────────────────────────────────────────
   - wait
-  - block: ":white_check_mark: Apply infrastructure changes? (${BUILDKITE_META_PLAN_SUMMARY})"
-    prompt: "Terraform summary: ${BUILDKITE_META_PLAN_SUMMARY}"
+  # dynamic block will be uploaded at the end of Init & Plan step
 
   #───────────────────────────────────────────────────────────────────────────────
   # 4. Terraform — Apply
   #───────────────────────────────────────────────────────────────────────────────
   - label: ":terraform: Apply"
     key: "apply"
+    depends_on:
+      - "approve"
     plugins:
       - docker#v3.8.0:
           image: hashicorp/terraform:1.5.7
@@ -153,8 +163,7 @@ steps:
             - echo "--- :information_source: Exporting meta-data"
             - buildkite-agent meta-data set QUEUE_KEY default
             - buildkite-agent meta-data set REGISTRY_SLUG "${TF_VAR_registry_name}"
-            - buildkite-agent meta-data set org_slug "$TF_VAR_org_slug"
-            - buildkite-agent meta-data set bk_token "$TF_VAR_buildkite_api_token"
+
     artifact_paths:
       - "terraform/artifacts/terraform-outputs.json"
 
@@ -181,6 +190,13 @@ steps:
         # Fallback: BUilDKITE_META_* env vars if present
         [ -z "$ORG_SLUG" ] && ORG_SLUG="$BUILDKITE_META_ORG_SLUG"
         [ -z "$BK_TOKEN" ] && BK_TOKEN="$BUILDKITE_META_BK_TOKEN"
+        # If variable still contains a command substitution placeholder, evaluate it
+        if echo "$ORG_SLUG" | grep -q "buildkite-agent meta-data get"; then
+          ORG_SLUG=$(eval echo "$ORG_SLUG")
+        fi
+        if echo "$BK_TOKEN" | grep -q "buildkite-agent meta-data get"; then
+          BK_TOKEN=$(eval echo "$BK_TOKEN")
+        fi
         echo "ORG_SLUG=$ORG_SLUG"
         echo "--- :information_source: Meta-data keys ---"
         buildkite-agent meta-data keys || true
