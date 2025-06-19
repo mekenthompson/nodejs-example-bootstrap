@@ -88,13 +88,12 @@ steps:
           
           # Initialize Terraform - downloads providers and sets up backend
           echo "--- :terraform: Initializing Terraform"
-          cd terraform
-          terraform init -input=false
+          terraform -chdir=terraform init -input=false
           
           # Create execution plan and save it to a file
           # This plan will be applied in the next step if approved
           echo "--- :terraform: Planning infrastructure changes"
-          terraform plan -input=false -out=../artifacts/terraform.tfplan
+          terraform -chdir=terraform plan -input=false -out=../artifacts/terraform.tfplan
           
           # Display the plan in human-readable format for review
           echo "--- :mag: Showing planned changes"
@@ -152,9 +151,8 @@ steps:
           
           # Apply the infrastructure changes
           echo "--- :terraform: Applying infrastructure changes"
-          cd terraform
-          terraform init -input=false                                  # Re-initialize to ensure consistency
-          terraform apply -input=false -auto-approve ../artifacts/terraform.tfplan
+          terraform -chdir=terraform init -input=false # Re-initialize to ensure consistency
+          terraform -chdir=terraform apply -input=false -auto-approve ../artifacts/terraform.tfplan
           
           echo "--- :white_check_mark: Infrastructure deployed successfully!"
           
