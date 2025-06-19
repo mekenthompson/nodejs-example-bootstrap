@@ -27,7 +27,7 @@ steps:
             value: "LINUX_AMD64_4X16"
           - label: "macOS M1 4 vCPU / 12 GB"
             value: "MACOS_M1_4X12"
-      - password: "Buildkite API token"
+      - text: "Buildkite API token"
         key: bk_token
         required: true
         hint: "Scopes: write_pipelines, read_pipelines, write_orgs, write_clusters, write_suites"
