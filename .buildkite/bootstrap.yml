@@ -107,6 +107,7 @@ steps:
           # Create execution plan and save it to a file
           # This plan will be applied in the next step if approved
           echo "--- :terraform: Planning infrastructure changes"
+
           terraform -chdir=/workdir/terraform plan -input=false -out=/workdir/artifacts/terraform.tfplan
           
           # Display the plan in human-readable format for review
